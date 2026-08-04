@@ -2,6 +2,12 @@
 
 面向实验平台的在线计算器。无构建工具，双击 `index.html` 即可运行。
 
+## 在线使用（Cloudflare Pages）
+
+- **生产版（main）**：https://yb-toolkit.pages.dev —— 组里其他人用，右上角显示 `stable`
+- **开发版（dev）**：每次 push 到 `dev` 自动生成独立预览网址，见
+  Cloudflare Pages → 项目 → Deployments 里对应构建的链接，右上角显示 commit hash + 「开发版」徽标
+
 ## 快速开始
 
 ```bash
@@ -91,8 +97,8 @@ scripts/stamp.sh        构建时注入 commit/日期
 
 | 分支 | 网址 | 谁用 |
 |---|---|---|
-| `main` | `yb.pages.dev` | 组里其他人 |
-| `dev` | `dev.yb.pages.dev` | 你 |
+| `main` | `yb-toolkit.pages.dev` | 组里其他人 |
+| `dev` | `Deployments` 页里的预览链接（每次 push 独立网址） | 你 |
 
 推荐 Cloudflare Pages 或 Netlify（每个分支自动生成独立预览网址，免费）。
 GitHub Pages 只能部署一个分支，你一改别人就跟着受影响。
