@@ -4,7 +4,9 @@
 set -euo pipefail
 COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "nogit")
 DATE=$(date -u +%Y-%m-%d)
-BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+# Cloudflare Pages 构建时用 detached HEAD 检出，git 拿不到真实分支名，
+# 必须优先用 CF_PAGES_BRANCH（Pages 提供，准确反映当前构建的分支）。
+BRANCH="${CF_PAGES_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")}"
 CHANNEL="stable"
 [ "$BRANCH" != "main" ] && CHANNEL="dev"
 
