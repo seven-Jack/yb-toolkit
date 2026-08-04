@@ -69,6 +69,16 @@
         '<p class="cap">横轴止于可用最大功率，纵轴下限为衍射极限。白色虚线为等 Rabi 频率线。</p>' +
       '</details>' +
 
+      '<details class="adv" id="' + i('exp3d') + '"><summary>三维曲面</summary>' +
+        '<div class="segs" style="margin:12px 0 0">' +
+          '<span style="flex:1"></span>' +
+          '<button class="seg mini" id="' + i('rot-l') + '">◀ 旋转</button>' +
+          '<button class="seg mini" id="' + i('rot-r') + '">旋转 ▶</button>' +
+        '</div>' +
+        '<div style="margin-top:8px"><canvas id="' + i('c3') + '" height="330"></canvas></div>' +
+        '<p class="cap">范围同图二，曲面在 Rabi 上限处削平。三维曲面开销大，仅在停止操作后重绘。</p>' +
+      '</details>' +
+
       '<details class="adv" id="' + i('exp2') + '"><summary>对照表与导出</summary>' +
         '<div id="' + i('tbl') + '" style="margin-top:8px"></div>' +
         '<div class="segs" style="margin:10px 0 0">' +
@@ -88,7 +98,7 @@
     },
 
     init: function (c) {
-      var $ = c.$, tgt = 'f', axmode = 'lin', compact = false, sched;
+      var $ = c.$, tgt = 'f', axmode = 'lin', compact = false, sched, azim = -135;
       var st = S.state;
 
       /* ---- 单位句柄 ---- */
@@ -291,6 +301,74 @@
                    U.auto('freq', Rmax, 3), '0', 'f_R');
       }
 
+      /* ---- 三维曲面（仅精细通道；开销大，含排序+数百 fill/stroke） ---- */
+      function drawC3() {
+        if (!$('exp3d').open) return;
+        if (!V.valid || !V.valid.ok) { P.prep(c.id('c3')); return; }
+        var o = P.prep(c.id('c3')), g = o.g, W = o.W, H = o.H;
+        var s = S.state;
+        var Pmx = s.limits.Pmax, wlo = s.limits.wmin, whi = Math.max(V.wg * 3, s.limits.wmin * 4);
+        var N = 26, el = 28 * Math.PI / 180, az = azim * Math.PI / 180;
+        var ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+        var Rmax = Math.min(V.C * Math.sqrt(Pmx) / wlo, s.limits.fRmax) || 1;
+        function proj(x, y, z) { return [-x * sa + y * ca, -(x * ca + y * sa) * se + z * ce, (x * ca + y * sa) * ce + z * se]; }
+        var pts = [], minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9, i, j;
+        var sq = new Float64Array(N + 1), iw = new Float64Array(N + 1);
+        for (i = 0; i <= N; i++) sq[i] = V.C * Math.sqrt(i / N * Pmx);
+        for (j = 0; j <= N; j++) iw[j] = 1 / (wlo + j / N * (whi - wlo));
+        for (i = 0; i <= N; i++) { pts[i] = [];
+          for (j = 0; j <= N; j++) {
+            var R = Math.min(sq[i] * iw[j], Rmax);
+            var p = proj(i / N - 0.5, j / N - 0.5, R / Rmax * 0.8 - 0.4);
+            pts[i][j] = { p: p, R: R };
+            if (p[0] < minx) minx = p[0]; if (p[0] > maxx) maxx = p[0];
+            if (p[1] < miny) miny = p[1]; if (p[1] > maxy) maxy = p[1];
+          } }
+        var cor = [[-0.5, -0.5, -0.4], [0.5, -0.5, -0.4], [0.5, 0.5, -0.4], [-0.5, 0.5, -0.4]];
+        for (i = 0; i < 4; i++) { var p2 = proj(cor[i][0], cor[i][1], cor[i][2]);
+          if (p2[0] < minx) minx = p2[0]; if (p2[0] > maxx) maxx = p2[0];
+          if (p2[1] < miny) miny = p2[1]; if (p2[1] > maxy) maxy = p2[1]; }
+        var pad = 48, scl = Math.min((W - 2 * pad) / (maxx - minx), (H - 2 * pad) / (maxy - miny));
+        var ox = (W - (maxx + minx) * scl) / 2, oy = (H + (maxy + miny) * scl) / 2;
+        function SX(p) { return ox + p[0] * scl; } function SY(p) { return oy - p[1] * scl; }
+        g.strokeStyle = P.color('--grid'); g.lineWidth = 1; g.globalAlpha = 0.7;
+        for (i = 0; i <= 4; i++) {
+          var a1 = proj(-0.5 + i / 4, -0.5, -0.4), a2 = proj(-0.5 + i / 4, 0.5, -0.4);
+          g.beginPath(); g.moveTo(SX(a1), SY(a1)); g.lineTo(SX(a2), SY(a2)); g.stroke();
+          var b1 = proj(-0.5, -0.5 + i / 4, -0.4), b2 = proj(0.5, -0.5 + i / 4, -0.4);
+          g.beginPath(); g.moveTo(SX(b1), SY(b1)); g.lineTo(SX(b2), SY(b2)); g.stroke(); }
+        g.globalAlpha = 1;
+        var qs = [];
+        for (i = 0; i < N; i++) for (j = 0; j < N; j++) {
+          var q = [pts[i][j], pts[i + 1][j], pts[i + 1][j + 1], pts[i][j + 1]];
+          qs.push({ q: q, d: (q[0].p[2] + q[1].p[2] + q[2].p[2] + q[3].p[2]) * 0.25,
+                   r: (q[0].R + q[1].R + q[2].R + q[3].R) * 0.25 }); }
+        qs.sort(function (a, b) { return a.d - b.d; });
+        var isc = 255 / Rmax;
+        for (i = 0; i < qs.length; i++) {
+          var oq = qs[i], col;
+          if (oq.r >= Rmax * 0.999) col = 'rgb(150,150,150)';
+          else { var q3 = (oq.r * isc | 0); if (q3 > 255) q3 = 255; q3 *= 3;
+            col = 'rgb(' + P.PLASMA[q3] + ',' + P.PLASMA[q3 + 1] + ',' + P.PLASMA[q3 + 2] + ')'; }
+          g.fillStyle = col; g.strokeStyle = col; g.lineWidth = 0.7;
+          g.beginPath(); var qq = oq.q;
+          g.moveTo(SX(qq[0].p), SY(qq[0].p));
+          g.lineTo(SX(qq[1].p), SY(qq[1].p));
+          g.lineTo(SX(qq[2].p), SY(qq[2].p));
+          g.lineTo(SX(qq[3].p), SY(qq[3].p));
+          g.closePath(); g.fill(); g.stroke();
+        }
+        g.fillStyle = P.color('--fg2'); g.font = '11px ui-monospace,Menlo,monospace';
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        var lp = proj(0, -0.64, -0.4);
+        g.fillText('功率 0–' + P.fmt(U.fromSI('power', Pmx, uP())) + ' ' + uP(), SX(lp), SY(lp));
+        var lw = proj(0.64, 0, -0.4);
+        g.fillText('束腰 ' + P.fmt(U.fromSI('length', wlo, uW())) + '–' +
+          P.fmt(U.fromSI('length', whi, uW())) + ' ' + uW(), SX(lw), SY(lw));
+        var lz = proj(-0.64, -0.64, 0.12);
+        g.fillText('f_R 0–' + P.fmt(U.fromSI('freq', Rmax, uF())) + ' ' + uF(), SX(lz), SY(lz));
+      }
+
       function buildTable() {
         if (!$('exp2').open) return;
         var s = S.state, rows = '<tr><th>P (' + uP() + ')</th><th style="text-align:right">f_R (' +
@@ -309,8 +387,8 @@
 
       /* ---- 调度 ---- */
       function coarse() { syncUnits(); compute(); paint(); drawC1(true); drawC2(true); }
-      function fine()   { syncUnits(); compute(); paint(); drawC1(false); drawC2(false); buildTable(); }
-      function measure() { P.measure([c.id('c1'), c.id('c2')]); }
+      function fine()   { syncUnits(); compute(); paint(); drawC1(false); drawC2(false); drawC3(); buildTable(); }
+      function measure() { P.measure([c.id('c1'), c.id('c2'), c.id('c3')]); }
 
       sched = new P.Scheduler(coarse, function () { measure(); fine(); }, 170);
 
@@ -348,8 +426,10 @@
         $('ax-lin').dataset.on = '1'; $('ax-log').dataset.on = '0'; sched.flush(); };
       $('ax-log').onclick = function () { axmode = 'log';
         $('ax-log').dataset.on = '1'; $('ax-lin').dataset.on = '0'; sched.flush(); };
-      [ 'exp1', 'exp2' ].forEach(function (k) {
+      [ 'exp1', 'exp2', 'exp3d' ].forEach(function (k) {
         $(k).addEventListener('toggle', function () { measure(); sched.flush(); }); });
+      $('rot-l').onclick = function () { azim -= 20; sched.flush(); };
+      $('rot-r').onclick = function () { azim += 20; sched.flush(); };
       $('btn-csv').onclick = function () { exportCSV(); };
       $('btn-copy').onclick = function () {
         var t = S.state.transition.label + ' | d_cyc=' + (V.d / window.YBC.SI.ea0).toFixed(6) +
@@ -386,7 +466,7 @@
         setCompact: function (on) {
           if (on === compact) return;
           compact = on;
-          ['exp1', 'exp2', 'exp3'].forEach(function (k) { if (on) $(k).open = false; });
+          ['exp1', 'exp2', 'exp3', 'exp3d'].forEach(function (k) { if (on) $(k).open = false; });
           $('c1').setAttribute('height', on ? '200' : '300');
           measure(); sched.flush();
         },

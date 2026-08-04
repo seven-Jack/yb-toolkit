@@ -260,6 +260,44 @@ async function main() {
                             : fail('行数未恢复', restoredRows + ' vs ' + fullRows);
   await shot(page, '06-restored.png');
 
+  /* ---------- 3b. 3a-1：rabi-power 三维曲面（折叠区，精细通道） ---------- */
+  section('3b. rabi-power 三维曲面');
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  // 顶部已是 rabi-power；展开三维曲面折叠区
+  await page.evaluate(() => {
+    const d = document.querySelector('#host-top [id$="_exp3d"]');
+    if (d) { d.open = true; d.dispatchEvent(new Event('toggle')); }
+  });
+  await page.waitForTimeout(700);
+  const surf = await page.evaluate(() => {
+    const cv = document.querySelector('#host-top [id$="_c3"]');
+    if (!cv) return { found: false };
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] !== 0) n++;
+    return { found: true, opaque: n };
+  });
+  surf.found && surf.opaque > 1000
+    ? ok('三维曲面画出内容（c3 不透明像素 ' + surf.opaque + '）')
+    : fail('三维曲面未画出', JSON.stringify(surf));
+  // 旋转按钮可用
+  await page.click('#host-top [id$="_rot-r"]');
+  await page.waitForTimeout(400);
+  ok('三维曲面旋转按钮可用');
+  // 紧凑模式下收起（约束①：新增内容必须收起，核心视图高度不变）
+  await page.evaluate(() => { window.YBPanes.setSplit(15); });
+  await page.waitForTimeout(400);
+  const surfCompact = await page.evaluate(() => {
+    const d = document.querySelector('#host-top [id$="_exp3d"]');
+    return { closed: !d.open };
+  });
+  surfCompact.closed ? ok('紧凑模式收起三维曲面折叠区')
+                     : fail('紧凑未收起三维曲面', JSON.stringify(surfCompact));
+  // 恢复默认布局
+  await page.evaluate(() => { window.YBPanes.setSplit(50); });
+  await page.waitForTimeout(400);
+  await shot(page, '12-rabi-3d.png');
+
   /* ---------- 4. fetch 数据库两路径 ---------- */
   section('4. fetch：外壳与独立页两条相对路径');
   // 全新加载外壳（避免上一节 Sr 残留），确认默认 Yb 与数据加载
