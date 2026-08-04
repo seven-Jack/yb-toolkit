@@ -175,7 +175,11 @@
 
       /* ---- 渲染 ---- */
       function render() {
-        if (!DB) return;
+        /* 就绪守卫：DB 由 loadDB() 异步填充，cur 由 syncFromStore() 在其后填写。
+         * 两者就绪前（或 file:// 下 loadDB() reject 后）不得访问 DB[cur.el] ——
+         * 否则 DB[null] 是 undefined，d.tr 直接抛异常。
+         * 同步注册的 toggle 监听器会在这个时间窗内触发 render()。 */
+        if (!DB || cur.el === null || cur.tr === null) return;
         var t = S.state.transition, D = S.derived;
         var d = DB[cur.el], tr = d.tr[cur.tr];
         $('R-d').textContent = D.d_red_au().toFixed(6);

@@ -3,6 +3,55 @@
 格式：`物理 / 界面 / 性能 / 对账 / 待定`，每条写清**改了什么**与**为什么改**。
 半年后回头看，"为什么"通常比"什么"更有价值。
 
+## [0.3.2] — 2026-08-04 — 首次真实浏览器实测
+
+> 里程碑：`tests/smoke.js` 的 DOM 全是桩，canvas 渲染、布局、拖拽、fetch 加载数据库
+> 从未在真实浏览器里跑过。本次用 Playwright 驱动系统 Chrome 实测，补齐这块空白，
+> 并由此揪出几处「只在真实环境出现」的 bug。**没有改任何物理常数 / 公式 / Store 派生量规则。**
+
+### 界面（真实环境暴露的 bug）
+- **修复独立页 `tools/raman-qubit.html` 加载即抛异常。** 该页 `pick()` 里
+  `document.getElementById('v-d').style.display=''` 但页面没有 `v-d` 元素（字段命名
+  不同），且无 null 保护 → 每次加载都抛 `Cannot read properties of null`。属于 README
+  待办 #3「画布代码尚未迁移」的连带症状。本页共 **三处** 同类访问（`pick()` 的 style、
+  `num('v-d')` 读 value、`calc()` 写 value），逐一加保护；`num()` 助手本身也补了
+  null 保护。这是本项目第二次栽在「假设某元素存在但页面没有」上。
+- **修复 hfs 模块的异步就绪竞态。** 根因：`cur={el:null,...}` 初始化，要等 `loadDB()`
+  的 Promise 兑现后 `syncFromStore()` 才填值；但 `$('exp1').addEventListener('toggle',
+  render)` 是同步注册的。`render()` 里 `var d=DB[cur.el]` → `DB[null]` 是 undefined →
+  `d.tr` 抛错。两个触发场景：DB 已加载但 cur 未就绪的时间窗内展开折叠区；以及 file://
+  下 loadDB() reject、cur 永远为 null 后任何 toggle 都必抛。修复：`render()` 开头加
+  `if (!DB || cur.el === null || cur.tr === null) return;`。已加烟雾测试防回归
+  （移除该守卫会让测试变红）。排查结论：rabi-power / raman-qubit 无异步初始化，
+  无此竞态；全项目该模式就此一处。
+
+### 测试（首版 tests/browser.js，34 项）
+- 新增 `tests/browser.js`：真实浏览器实测四项要求（联动提示条数值 / J≠0 不出 NaN /
+  紧凑模式 / fetch 两路径 + file:// 提示），外加常规项（组合切换、拖拽、复制链接、
+  撤销重置、独立页、性能），收集 console error、截图存 `tests/screenshots/`。
+- 接入 CI：拆成两个 job —— `vectors`（四套物理/挂载测试）每次 push 都跑；
+  `browser`（真实浏览器实测）只在 push 到 main 或 pull_request 时跑，避免每次 dev
+  push 都承受 Playwright 浏览器下载与运行成本。
+- 新增 `favicon.svg` 并在各页引用，消除控制台里常驻的 favicon 404（非 bug，但会干扰
+  以后排错）。
+
+### 对账（测试脚本自身的假象 —— 记下来省下次的坑）
+- **J≠0 时画布清空是正确行为，断言最初写反、误判为失败。** 无效态下图表被 `prep()`
+  清空（0 不透明像素）是设计意图（不显示旧数值），不是空屏 bug。这类"清空 vs 空白"
+  的断言方向，以后遇到要先确认哪边才是正确行为。
+- **紧凑模式最初用 Yb 测，看不出截断。** Yb 塞曼表本就只有 6 行，30→6 的截断在它身上
+  无体现，会"让一个坏掉的功能看起来是好的"。换成 Sr（30 行）才验证到 6 行截断。
+  测试用例选数据，要让目标差异足够大。
+- **折叠区不会自动重新展开。** `setCompact(false)` 只负责收起、不负责展开，恢复高度后
+  `<details>` 需用户手动点开。这是有意设计，不是 bug；断言只应锁行数恢复，不应锁自动展开。
+
+### 待定
+- **默认分割比与紧凑阈值不匹配。** 默认 55% 分割 + 960px 视口下，下窗格净高约 352px，
+  已经低于 420px 紧凑阈值 —— 一打开就是紧凑模式。这不是测试的错，是默认阈值与默认
+  分割比不匹配：要么调阈值、要么调默认分割比。尚未决定哪个更合理，暂记于此。
+- 上一版遗留：`data/transitions.json` 与 `tools/hfs-matrix-element.html` 内联
+  `const DB=[...]` 仍是同一份数据的两份拷贝（任务 2 处理）。
+
 ## [0.3.1] — 2026-08-03 — 自查修复
 
 ### 物理

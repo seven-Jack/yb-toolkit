@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>171Yb 拉曼跃迁计算器 v4</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="stylesheet" href="../shared/style.css">
 <style>
 :root{
@@ -392,13 +393,14 @@ function Kco(D,wx,wy,g){ var Dr=2*Math.PI*D; if(!Dr) return 0;
 function scatErr(D){ return YB.scatterError(D); }
 function areaErr(th){ return YB.areaError(th); }
 function qwp(u){ var r=YB.qwp(u); return {S3:r.S3, a:r.alpha}; }
-function num(id){ var v=parseFloat(document.getElementById(id).value); return isFinite(v)?v:0; }
+function num(id){ var e=document.getElementById(id); if(!e) return 0;
+  var v=parseFloat(e.value); return isFinite(v)?v:0; }
 function set(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
 
 function pick(t){ tgt=t; ['d','p','f'].forEach(function(k){
   document.getElementById('s-'+k).dataset.on=(k===t)?'1':'0';
   var el=document.getElementById('v-'+k); if(el) el.readOnly=(k===t); });
-  document.getElementById('v-d').style.display=''; calc(); }
+  var vd=document.getElementById('v-d'); if(vd) vd.style.display=''; calc(); }
 function pmode(m){ pol=m; ['s3','qwp','af'].forEach(function(k){
   document.getElementById('pm-'+k).dataset.on=(k===m)?'1':'0';
   document.getElementById('p-'+k).style.display=(k===m)?'':'none'; }); calc(); }
@@ -442,7 +444,7 @@ function calc(){
     S.Plas=S.eta>0?Pat/S.eta:0; document.getElementById('v-p').value=(S.Plas*1e3).toFixed(3); }
   else { Pat=S.eta*S.Plas; var d2=Math.abs(K*Pat);
     S.d=d2>0?Math.sqrt(Math.abs(S.W)/d2):0; dHold=S.d/AU;
-    document.getElementById('v-d').value=dHold.toFixed(5); }
+    var vd=document.getElementById('v-d'); if(vd) vd.value=dHold.toFixed(5); }
   S.Pat=Pat;
 
   var I=Pat>0?2*Pat/(Math.PI*S.wx*S.wy):0, E0=Math.sqrt(2*I/(CC*EP));

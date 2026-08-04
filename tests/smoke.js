@@ -128,6 +128,21 @@ check('Ω_R/2π = 1.7261 MHz', () =>
 console.log('\n── 卸载 ──');
 check('卸载不抛异常', () => { YBM.unmount(iC); return YBM.instances.length === 2; });
 
+console.log('\n── 异步就绪竞态（DB 未加载时 render 不抛异常）──');
+/* 回归测试：hfs 模块的 toggle 监听器是同步注册的，而 DB 由 loadDB() 异步填充。
+ * 在 DB/cur 就绪前展开折叠区会触发 render() → DB[cur.el] 是 undefined → d.tr 抛错。
+ * 本烟雾环境里 fetch 直接 reject（line 67），正是「DB 永不就绪」的场景。
+ * 挂载 hfs 后直接触发其 toggle 监听器，断言不抛异常。 */
+check('DB 未加载时 toggle → render() 不抛异常', () => {
+  const inst = YBM.mount('hfs-matrix-element', mkEl('div'));
+  const fired = listeners['toggle'] || [];
+  if (!fired.length) throw new Error('未注册 toggle 监听器');
+  let threw = null;
+  const before = errors.length;
+  fired.forEach(f => { try { f(); } catch (e) { threw = e; } });
+  return threw === null && errors.length === before;
+});
+
 console.log('\n' + '='.repeat(50));
 if (errors.length) {
   console.log('加载/运行期错误 ' + errors.length + ' 条：');

@@ -1,0 +1,15 @@
+{
+  "name": "yb-toolkit",
+  "version": "0.3.1",
+  "description": "¹⁷¹Yb 中性原子量子计算物理计算工具集（无构建工具，双击 index.html 即可运行）",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node tests/bench.js && python3 tests/bench.py && node tests/crosscheck.js && node tests/smoke.js",
+    "test:browser": "node tests/browser.js",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

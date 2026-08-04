@@ -1,6 +1,10 @@
 name: tests
 
 # 公式一改，两套实现同时校验。失败即阻止合并与部署。
+# 两个 job 拆分原因：浏览器测试要装 Playwright + 浏览器，重且慢；
+# 若每次 push 都跑会拖累 dev 的反馈速度。因此：
+#   - vectors：四套物理/挂载测试，每次 push 到 main/dev 都跑
+#   - browser：真实浏览器实测，只在 push 到 main 或 pull_request 时跑
 on:
   push:
     branches: [main, dev]
@@ -29,3 +33,27 @@ jobs:
 
       - name: 模块挂载烟雾测试
         run: node tests/smoke.js
+
+  browser:
+    # 真实浏览器实测（canvas 渲染、布局、拖拽、fetch）。只在 main push 或 PR 跑，
+    # 避免每次 dev push 都承受 Playwright 浏览器下载与运行成本。
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 安装依赖
+        run: npm ci
+      - name: 安装浏览器
+        run: npx playwright install --with-deps chromium
+      - name: 浏览器实测
+        run: node tests/browser.js
+      - name: 上传截图
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-screenshots
+          path: tests/screenshots/

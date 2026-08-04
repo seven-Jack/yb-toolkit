@@ -5,3 +5,5 @@ __pycache__/
 *.bak
 .vscode/
 .idea/
+# 浏览器测试产物（每次运行重新生成；CI 用 upload-artifact 单独收集）
+tests/screenshots/
