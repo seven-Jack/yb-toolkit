@@ -68,6 +68,12 @@
   `<details>` 需用户手动点开。这是有意设计，不是 bug；断言只应锁行数恢复，不应锁自动展开。
 
 ### 待定
+- **教训：测试"坏数据能否被捕获"时不要用 `json.dump` 改写磁盘上的真文件。** 曾为验证
+  `validate_transitions()` 能捕获坏数据而临时 `json.dump` 改 `data/transitions.json`，
+  意外损坏了文件（一度只剩 `{`）。`json.dump` 还会重排键序、把中文转成 `\uXXXX`、丢缩进
+  —— 即使不损坏也产生大量无意义 diff。正确做法：`copy.deepcopy` 读入后**在内存里**构造
+  坏数据，把数据对象传给校验函数（`validate_transitions()` 已重构为接受 `db` 参数），
+  不碰磁盘。真正改数据文件要走 `git` 或精确的编辑工具。
 - **`render()` 竞态修复的「DB 已加载但 cur 未就绪」半段无测试保护。** 烟雾环境里
   `fetch` 被 reject、DB 永远是 null，走不到「DB 已加载但 cur 为 null」的微任务窗口，
   因此烟雾测试只覆盖了「DB 未加载」半段——若有人把守卫退回成 `if (!DB) return`，

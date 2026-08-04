@@ -283,15 +283,20 @@ def fmt(v):
     return f"{v:.6e}" if (a >= 1e5 or a < 1e-3) else f"{v:.8g}"
 
 
-def validate_transitions():
+def validate_transitions(db=None):
     """全库校验 data/transitions.json（任务 2：独立页不再内联 DB，统一走这一份）。
 
     1. 每个跃迁要么有 lam（真空 nm，直接用），要么有 ek（cm⁻¹，由 1e7/ek 导出真空波长）；
        若两者都有，导出值必须与 lam 一致（防止混用空气/真空波长）。
     2. dFromGamma 结果必须为有限正数（任何一条为 NaN/负都意味着数据损坏）。
+
+    db 参数：可直接传入数据对象（用于"坏数据能否被捕获"的反向验证，传内存中的
+    copy.deepcopy 构造的坏数据，**不要**改写磁盘上的真文件 —— 见 CHANGELOG 教训）。
+    缺省时从 data/transitions.json 读取。
     """
-    root = Path(__file__).parent.parent
-    db = json.loads((root / "data" / "transitions.json").read_text(encoding="utf-8"))
+    if db is None:
+        root = Path(__file__).parent.parent
+        db = json.loads((root / "data" / "transitions.json").read_text(encoding="utf-8"))
     errors = []
     ntr = 0
     for e in db["elements"]:
