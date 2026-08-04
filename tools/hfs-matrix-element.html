@@ -136,6 +136,7 @@ textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 <aside>
   <div class="card">
     <h2>选择跃迁</h2>
+    <div id="dbStatus" class="note" style="margin:0 0 10px"></div>
     <div class="field"><label for="el">元素</label><select id="el"></select></div>
     <div class="field"><label for="tr">跃迁</label><select id="tr"></select></div>
     <div class="field"><label for="iso">同位素</label><select id="iso"></select></div>
@@ -305,69 +306,42 @@ const chkStatus=t=>/待核对/.test(t.gu||"")?{s:"待核对",ok:false}:{s:"已�
 const NOTES={};
 const noteKey=(d,t,s)=>`${d.el}|${t.n.split("  ")[0]}|${s.a}`;
 
-const DB=[
-{el:"Rb",name:"铷",Z:37,J:.5,gcfg:"5s  \u00B2S\u2081\u2044\u2082",
- iso:[{a:87,I:1.5,ab:"27.83(2)%",hfs:"6.834682610905 GHz"},
-      {a:85,I:2.5,ab:"72.17(2)%",hfs:"3.0357324390 GHz"}],
- tr:[{n:"D2  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2083\u2044\u2082",Jp:1.5,lam:780.241210,gam:6.065e6,
-      gu:"\u00B10.009 MHz",src:"Steck; \u03C4=26.24(4) ns (Volz 1996)",ecfg:"5p  \u00B2P\u2083\u2044\u2082"},
-     {n:"D1  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2081\u2044\u2082",Jp:.5,lam:794.978851,gam:5.746e6,
-      gu:"\u00B10.008 MHz",src:"Steck; \u03C4=27.70(4) ns",ecfg:"5p  \u00B2P\u2081\u2044\u2082"}]},
-{el:"Cs",name:"铯",Z:55,J:.5,gcfg:"6s  \u00B2S\u2081\u2044\u2082",
- iso:[{a:133,I:3.5,ab:"100%",hfs:"9.192631770 GHz（定义秒）"}],
- tr:[{n:"D2  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2083\u2044\u2082",Jp:1.5,lam:852.347276,gam:5.234e6,
-      gu:"NIST A_ki\u21925.214 (AA)",src:"Steck; NIST A_ki=3.276\u00D710\u2077 s\u207B\u00B9",ecfg:"6p  \u00B2P\u2083\u2044\u2082"},
-     {n:"D1  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2081\u2044\u2082",Jp:.5,lam:894.592960,gam:4.575e6,
-      gu:"NIST A_ki\u21924.568 (A)",src:"Steck; NIST A_ki=2.87\u00D710\u2077 s\u207B\u00B9",ecfg:"6p  \u00B2P\u2081\u2044\u2082"}]},
-{el:"K",name:"钾",Z:19,J:.5,gcfg:"4s  \u00B2S\u2081\u2044\u2082",
- iso:[{a:39,I:1.5,ab:"93.26%",hfs:"461.7197 MHz"},{a:41,I:1.5,ab:"6.73%",hfs:"254.0139 MHz"},
-      {a:40,I:4,ab:"0.0117%",hfs:"1.2857 GHz"}],
- tr:[{n:"D2  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2083\u2044\u2082",Jp:1.5,lam:766.700922,gam:6.035e6,
-      gu:"NIST A_ki\u21926.16 (B+)",src:"Tiecke; NIST A_ki=3.87\u00D710\u2077 s\u207B\u00B9",ecfg:"4p  \u00B2P\u2083\u2044\u2082"},
-     {n:"D1  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2081\u2044\u2082",Jp:.5,lam:770.108385,gam:5.956e6,
-      gu:"NIST A_ki\u21926.08 (B+)",src:"Tiecke; NIST A_ki=3.82\u00D710\u2077 s\u207B\u00B9",ecfg:"4p  \u00B2P\u2081\u2044\u2082"}]},
-{el:"Na",name:"钠",Z:11,J:.5,gcfg:"3s  \u00B2S\u2081\u2044\u2082",
- iso:[{a:23,I:1.5,ab:"100%",hfs:"1.7716261288 GHz"}],
- tr:[{n:"D2  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2083\u2044\u2082",Jp:1.5,lam:589.158326,gam:9.7946e6,
-      gu:"NIST A_ki\u21929.72 (AA)",src:"Steck; NIST A_ki=6.11\u00D710\u2077 s\u207B\u00B9",ecfg:"3p  \u00B2P\u2083\u2044\u2082"},
-     {n:"D1  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2081\u2044\u2082",Jp:.5,lam:589.755815,gam:9.7654e6,
-      gu:"NIST A_ki\u21929.71 (AA)",src:"Steck; NIST A_ki=6.10\u00D710\u2077 s\u207B\u00B9",ecfg:"3p  \u00B2P\u2081\u2044\u2082"}]},
-{el:"Yb",name:"镱",Z:70,J:0,gcfg:"4f\u00B9\u2074 6s\u00B2  \u00B9S\u2080",
- iso:[{a:171,I:.5,ab:"14.3%",hfs:"\u2014 (J=0)"},{a:173,I:2.5,ab:"16.1%",hfs:"\u2014 (J=0)"},
-      {a:174,I:0,ab:"31.9%",hfs:"\u2014"},{a:176,I:0,ab:"12.7%",hfs:"\u2014"}],
- tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:17992.007,gam:182e3,
-      gu:"文献分散 182\u2013184 kHz",src:"\u03C4=874 ns; NIST ASD 能级",ecfg:"4f\u00B9\u2074 6s6p  \u00B3P\u2081"},
-     {n:"\u00B9S\u2080 \u2192 \u00B9P\u2081",Jp:1,ek:25068.222,gam:28e6,
-      gu:"文献分散 28\u201329 MHz",src:"\u03C4=5.68 ns; NIST ASD 能级",ecfg:"4f\u00B9\u2074 6s6p  \u00B9P\u2081"}]},
-{el:"Sr",name:"锶",Z:38,J:0,gcfg:"5s\u00B2  \u00B9S\u2080",
- iso:[{a:87,I:4.5,ab:"7.0%",hfs:"\u2014 (J=0)"},{a:88,I:0,ab:"82.6%",hfs:"\u2014"},
-      {a:86,I:0,ab:"9.9%",hfs:"\u2014"}],
- tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:14504.334,gam:7.5e3,
-      gu:"文献分散 7.5\u20137.6 kHz",src:"\u03C4\u224821 \u03BCs; NIST ASD 能级",ecfg:"5s5p  \u00B3P\u2081"},
-     {n:"\u00B9S\u2080 \u2192 \u00B9P\u2081",Jp:1,ek:21698.452,gam:32e6,
-      gu:"已修正（原 30.5 偏低）",src:"NIST A_ki=2.01\u00D710\u2078 s\u207B\u00B9 \u2192 31.99 MHz",ecfg:"5s5p  \u00B9P\u2081"}]},
-{el:"Ca",name:"钙",Z:20,J:0,gcfg:"4s\u00B2  \u00B9S\u2080",
- iso:[{a:43,I:3.5,ab:"0.135%",hfs:"\u2014 (J=0)"},{a:40,I:0,ab:"96.94%",hfs:"\u2014"}],
- tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:15210.063,gam:400,
-      gu:"量级值，待核对",src:"NIST ASD 能级",ecfg:"4s4p  \u00B3P\u2081"},
-     {n:"\u00B9S\u2080 \u2192 \u00B9P\u2081",Jp:1,ek:23652.304,gam:34.70e6,
-      gu:"NIST 精度等级 B+",src:"NIST A_ki=2.18\u00D710\u2078 s\u207B\u00B9",ecfg:"4s4p  \u00B9P\u2081"}]},
-{el:"Mg",name:"镁",Z:12,J:0,gcfg:"3s\u00B2  \u00B9S\u2080",
- iso:[{a:25,I:2.5,ab:"10.00%",hfs:"\u2014 (J=0)"},{a:24,I:0,ab:"78.99%",hfs:"\u2014"}],
- tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:21870.464,gam:31,
-      gu:"量级值，待核对",src:"NIST ASD 能级（波长已修正为真空）",ecfg:"3s3p  \u00B3P\u2081"},
-     {n:"\u00B9S\u2080 \u2192 \u00B9P\u2081",Jp:1,ek:35051.264,gam:78.78e6,
-      gu:"NIST 精度等级 B",src:"NIST A_ki=4.95\u00D710\u2078 s\u207B\u00B9（波长已修正）",ecfg:"3s3p  \u00B9P\u2081"}]},
-{el:"Hg",name:"汞",Z:80,J:0,gcfg:"5d\u00B9\u2070 6s\u00B2  \u00B9S\u2080",
- iso:[{a:199,I:.5,ab:"16.87%",hfs:"\u2014 (J=0)"},{a:201,I:1.5,ab:"13.18%",hfs:"\u2014 (J=0)"},
-      {a:202,I:0,ab:"29.86%",hfs:"\u2014"}],
- tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:39412.300,gam:1.273e6,
-      gu:"NIST 精度等级 B",src:"NIST A_ki=8.00\u00D710\u2076 s\u207B\u00B9（波长已修正）",ecfg:"5d\u00B9\u2070 6s6p  \u00B3P\u2081"}]},
-{el:"Cd",name:"镉",Z:48,J:0,gcfg:"4d\u00B9\u2070 5s\u00B2  \u00B9S\u2080",
- iso:[{a:111,I:.5,ab:"12.80%",hfs:"\u2014 (J=0)"},{a:113,I:.5,ab:"12.22%",hfs:"\u2014 (J=0)"},
-      {a:114,I:0,ab:"28.73%",hfs:"\u2014"}],
- tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:30656.087,gam:66.7e3,
-      gu:"量级值，待核对",src:"NIST ASD 能级（波长已修正为真空）",ecfg:"4d\u00B9\u2070 5s5p  \u00B3P\u2081"}]}];
+let DB=null, DBERR=null;
+/* 元素数据库：与模块版共用同一份 data/transitions.json，不再内联。
+ * 数据唯一来源是 data/transitions.json（bench.py 会全库校验）。
+ * 异步加载。DB 未就绪前，任何用到 DB 的函数都要先过 ready() 守卫。
+ * fetch 失败（如 file:// 下被 CORS 拦截）时给出「请通过 HTTP 打开」提示，
+ * 并清空主区显示错误，而不是白屏或抛出看不懂的异常。 */
+let DBTASK=null, DBLOADING=true;
+function ready(){ return !!DB; }
+function dbStatusLine(){
+  return DBLOADING
+    ? '<div class="note w" style="margin:12px 0">加载元素数据库…</div>'
+    : DBERR
+      ? '<div class="note b" style="margin:12px 0">无法加载 <code>data/transitions.json</code>。'+
+        '本页面需要通过 HTTP 打开：<br><code>python3 -m http.server 8000</code>，然后访问 '+
+        '<code>http://localhost:8000/tools/hfs-matrix-element.html</code>。<br>'+
+        '（<code>file://</code> 下浏览器会以 CORS 策略拦截 fetch。）</div>'
+      : '';
+}
+function fetchDB(){
+  if(DB) return Promise.resolve(DB);
+  if(DBTASK) return DBTASK;
+  DBLOADING=true; showStatus();
+  DBTASK=fetch("../data/transitions.json")
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(j){ DB=j.elements; DBLOADING=false; DBERR=null; showStatus(); return DB; })
+    .catch(function(e){ DBLOADING=false; DBERR=e; showStatus(); throw e; });
+  return DBTASK;
+}
+function showStatus(){
+  var box=document.getElementById('dbStatus');
+  if(!box) return;
+  box.innerHTML = ready()
+    ? '<span class="okdot" style="color:var(--ok)">●</span> 已加载 ' + DB.length + ' 个元素'
+    : dbStatusLine();
+}
+
 // Edlén 空气折射率（760 torr, 22 °C, 干空气），仅用于显示空气波长对照
 function nAir(lamNm){
   const k=1000/lamNm, k2=k*k;
@@ -429,13 +403,14 @@ function setAccent(nm){
 }
 const buildEl=()=>$("el").innerHTML=DB.map((d,i)=>
   `<option value="${i}">${d.el} \u00B7 ${d.name}${d.J===0?"":"  (J = 1/2)"}</option>`).join("");
-const buildTr=()=>{const d=DB[+$("el").value];
+const buildTr=()=>{if(!ready())return;const d=DB[+$("el").value];
   $("tr").innerHTML=d.tr.map((t,i)=>
     `<option value="${i}">${t.n} \u00B7 ${lamVac(t).toFixed(1)} nm</option>`).join("");};
-const buildIso=()=>{const d=DB[+$("el").value];
+const buildIso=()=>{if(!ready())return;const d=DB[+$("el").value];
   $("iso").innerHTML=d.iso.map((s,i)=>
     `<option value="${i}">${s.a}${d.el} \u00B7 I = ${half(s.I)} \u00B7 ${s.ab}</option>`).join("");};
 function loadDB(){
+  if(!ready()) return;   // 异步就绪守卫
   const d=DB[+$("el").value],t=d.tr[+$("tr").value];
   $("gam").value=t.gam;
   $("dman").value=dFromGamma(t.gam,lamVac(t),t.Jp).toFixed(4);
@@ -473,6 +448,7 @@ function syncNote(d,t,s){
 $("note").oninput=()=>{if(CURKEY!==null){NOTES[CURKEY]=$("note").value;refreshNoteInfo();}};
 
 function compute(){
+  if(!ready()) return;   // 异步就绪守卫：DB 未加载前不访问 DB[...]
   const d=DB[+$("el").value],t=d.tr[+$("tr").value],s=d.iso[+$("iso").value];
   const I=s.I,J=d.J,Jp=t.Jp,lam=lamVac(t);
   syncNote(d,t,s);
@@ -725,6 +701,9 @@ $("tex").onclick=async()=>{
   catch(e){$("exNote").textContent="剪贴板不可用，请改用 CSV 下载。";}
 };
 $("run").onclick=()=>{
+  if(!ready()){ $("stOut").hidden=false;
+    $("stOut").textContent="数据库未加载，无法自检。请通过 HTTP 打开本页。";
+    $("stOut").style.borderLeftColor="var(--bad)"; return; }
   const L=[];let pass=0,fail=0;
   const chk=(ok,msg)=>{ok?pass++:fail++;L.push((ok?"  \u2713  ":"  \u2717  ")+msg);};
   const near=(a,b,t=1e-9)=>Math.abs(a-b)<t;
@@ -777,7 +756,15 @@ $("gam").oninput=()=>{if(MODE==="G")compute();};
 $("dman").oninput=()=>{if(MODE==="D")compute();};
 for(const id of["fF","fFp","fQ","fCyc"])$(id).onchange=renderZ;
 matchMedia("(prefers-color-scheme:dark)").addEventListener("change",compute);
-renderChangelog();buildEl();buildTr();buildIso();loadDB();compute();
+/* 异步初始化：数据库 fetch 成功后再填充选择器并计算。
+ * fetch 失败（file:// 等）时显示「请通过 HTTP 打开」提示，选择器保持空，
+ * compute 不会因 DB 未就绪而抛错（buildEl 等都在 ready() 之后才跑）。 */
+function boot(){
+  if(!ready()){ showStatus(); return; }
+  renderChangelog();buildEl();buildTr();buildIso();loadDB();compute();showStatus();
+}
+showStatus();
+fetchDB().then(boot).catch(function(){ showStatus(); });
 </script>
 </body>
 </html>

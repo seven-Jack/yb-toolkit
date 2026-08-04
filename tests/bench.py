@@ -283,6 +283,49 @@ def fmt(v):
     return f"{v:.6e}" if (a >= 1e5 or a < 1e-3) else f"{v:.8g}"
 
 
+def validate_transitions():
+    """全库校验 data/transitions.json（任务 2：独立页不再内联 DB，统一走这一份）。
+
+    1. 每个跃迁要么有 lam（真空 nm，直接用），要么有 ek（cm⁻¹，由 1e7/ek 导出真空波长）；
+       若两者都有，导出值必须与 lam 一致（防止混用空气/真空波长）。
+    2. dFromGamma 结果必须为有限正数（任何一条为 NaN/负都意味着数据损坏）。
+    """
+    root = Path(__file__).parent.parent
+    db = json.loads((root / "data" / "transitions.json").read_text(encoding="utf-8"))
+    errors = []
+    ntr = 0
+    for e in db["elements"]:
+        for t in e["tr"]:
+            ntr += 1
+            has_lam = "lam" in t
+            has_ek = "ek" in t
+            if not has_lam and not has_ek:
+                errors.append(f"{e['el']} {t['n']}: 既无 lam 也无 ek")
+                continue
+            lam = t["lam"] if has_lam else 1e7 / t["ek"]
+            if has_lam and has_ek:
+                derived = 1e7 / t["ek"]
+                if abs(derived - t["lam"]) / t["lam"] > 1e-4:
+                    errors.append(f"{e['el']} {t['n']}: lam={t['lam']} 与 ek 导出 {derived:.6f} 不一致")
+            # d 由 Γ 反解（README 规则 ⓪），必须有限且为正。
+            # d_from_gamma 对非法 Γ（如负值）可能抛异常，这里兜住，干净地报错而非堆栈。
+            try:
+                d = d_from_gamma(t["gam"], lam, t["Jp"])
+                bad_d = not (math.isfinite(d) and d > 0)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"{e['el']} {t['n']}: dFromGamma 计算失败 ({exc})")
+                continue
+            if bad_d:
+                errors.append(f"{e['el']} {t['n']}: dFromGamma 非有限正数 ({d})")
+    if errors:
+        print(f"  ✗  data/transitions.json 全库校验失败，{len(errors)} 处：")
+        for er in errors[:20]:
+            print(f"       · {er}")
+        return False, ntr
+    print(f"  ✓  data/transitions.json 全库校验通过：{ntr} 条跃迁，lam/ek 一致且 d 有限为正")
+    return True, ntr
+
+
 def main():
     vectors = json.loads((Path(__file__).parent / "vectors.json").read_text(encoding="utf-8"))
     npass = nfail = 0
@@ -336,6 +379,12 @@ def main():
             print("  · " + f)
         sys.exit(1)
     print("全部通过")
+
+    # 全库数据库校验（独立于 vectors，单独报告）
+    print("\n── transitions.json ──")
+    ok_db, _ = validate_transitions()
+    if not ok_db:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

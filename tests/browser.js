@@ -77,6 +77,18 @@ async function main() {
   await page.waitForSelector('#host-top canvas, #host-top .res');
   ok('两个窗格挂载出内容');
 
+  // 默认加载后两窗格都不应处于紧凑模式（回归：COMPACT_PX=420 + 短视口下开箱即紧凑，
+  // 见 CHANGELOG 0.3.2。已改 COMPACT_PX=380 + 默认 50/50。）
+  const compactState = await page.evaluate(() => {
+    const thr = 380;
+    const top = document.getElementById('pane-top').clientHeight - 44;
+    const bot = document.getElementById('pane-bot').clientHeight - 44;
+    return { top, bot, topCompact: top < thr, botCompact: bot < thr };
+  });
+  (!compactState.topCompact && !compactState.botCompact)
+    ? ok('默认加载两窗格均非紧凑（top净高' + compactState.top + 'px / bot' + compactState.bot + 'px）')
+    : fail('默认窗格不应紧凑', JSON.stringify(compactState));
+
   /* ---------- 1. 联动测试 ---------- */
   section('1. 联动：hfs 选 Yb 556 → 下游提示条/数值/撤销');
   await page.selectOption('#sel-top', 'hfs-matrix-element');

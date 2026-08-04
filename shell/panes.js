@@ -11,9 +11,10 @@
 (function (root) {
   'use strict';
 
-  var COMPACT_PX = 420;      /* 窗格净高低于此值 → 紧凑模式 */
+  var COMPACT_PX = 380;      /* 窗格净高低于此值 → 紧凑模式（原 420：常见短视口下
+                                开箱即触发，见 CHANGELOG 0.3.2） */
   var panes = {};            /* {top:{el,sel,inst,moduleId}, bot:{...}} */
-  var splitPct = 55;
+  var splitPct = 50;         /* 默认 50/50，双击复位到 50 */
   var singleMode = false;
 
   function init(opts) {

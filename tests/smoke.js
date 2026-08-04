@@ -143,6 +143,21 @@ check('DB 未加载时 toggle → render() 不抛异常', () => {
   return threw === null && errors.length === before;
 });
 
+console.log('\n── 单一数据源（无第二份元素数据库）──');
+/* 任务 2：独立页已改为 fetch data/transitions.json，仓库内不应再有内联
+ * 的 const DB=[...] 元素数据库拷贝。扫描全部源码，命中即视为回归。 */
+check('仓库内无第二份元素数据库（无 const DB=[ 字面量）', () => {
+  const files = ['index.html',
+    'shell/store.js','shell/registry.js','shell/panes.js',
+    'modules/rabi-power.js','modules/raman-qubit.js','modules/hfs-matrix-element.js',
+    'tools/rabi-power.html','tools/raman-qubit.html','tools/hfs-matrix-element.html',
+    'shared/constants.js','shared/physics.js','shared/units.js','shared/wigner.js',
+    'shared/urlstate.js','shared/plot.js'];
+  const hits = files.filter(f => /const\s+DB\s*=\s*\[/.test(R(f)));
+  if (hits.length) throw new Error('仍有内联数据库: ' + hits.join(', '));
+  return true;
+});
+
 console.log('\n' + '='.repeat(50));
 if (errors.length) {
   console.log('加载/运行期错误 ' + errors.length + ' 条：');
