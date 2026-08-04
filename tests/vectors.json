@@ -1,0 +1,563 @@
+{
+  "_comment": [
+    "两套实现（网页 JS 与 notebook / .py 的 Python）必须同时通过这份向量。",
+    "改公式时两边一起报警，避免历史上出现过的分叉。",
+    "新增向量时请写清 src：这个期望值从哪里来。"
+  ],
+  "constants": [
+    {
+      "name": "d_cyc 由线宽反推",
+      "fn": "dCycFromLinewidth",
+      "args": {
+        "Gamma_Hz": 183000.0,
+        "lambda_m": 5.56e-07
+      },
+      "expect": {
+        "d_ea0": 0.312316
+      },
+      "rtol": 1e-05,
+      "src": "notebook cell 1 输出 0.312316"
+    },
+    {
+      "name": "约化矩阵元 = √3 · d_cyc",
+      "fn": "identity",
+      "args": {
+        "value": 0.540947
+      },
+      "expect": {
+        "value": 0.5409466
+      },
+      "rtol": 1e-05,
+      "src": "Steck 归一化，⟨¹S₀‖er‖³P₁⟩"
+    }
+  ],
+  "single_photon": [
+    {
+      "name": "notebook cell 1: 1 mW / 50 µm",
+      "fn": "rabiHz",
+      "args": {
+        "d_ea0": 0.312316,
+        "P_W": 0.001,
+        "wx_m": 5e-05,
+        "wy_m": 5e-05
+      },
+      "expect": {
+        "fR_Hz": 55354149.0
+      },
+      "rtol": 1e-06,
+      "src": "notebook cell 1 表格 fR = 55.354149 MHz（notebook 硬编码 λ=556.0 nm；框架默认已改用 NIST 导出的 555.802363 nm，故此向量的 λ 为显式输入而非默认值）"
+    },
+    {
+      "name": "notebook cell 1: I₀",
+      "fn": "intensity",
+      "args": {
+        "P_W": 0.001,
+        "wx_m": 5e-05,
+        "wy_m": 5e-05
+      },
+      "expect": {
+        "I_Wm2": 254647.908947
+      },
+      "rtol": 1e-09,
+      "src": "notebook cell 1 表格 I0（notebook 硬编码 λ=556.0 nm；框架默认已改用 NIST 导出的 555.802363 nm，故此向量的 λ 为显式输入而非默认值）"
+    },
+    {
+      "name": "notebook cell 1: E₀",
+      "fn": "efieldFromPower",
+      "args": {
+        "P_W": 0.001,
+        "wx_m": 5e-05,
+        "wy_m": 5e-05
+      },
+      "expect": {
+        "E_Vm": 13851.612653
+      },
+      "rtol": 1e-08,
+      "src": "notebook cell 1 表格 E0（notebook 硬编码 λ=556.0 nm；框架默认已改用 NIST 导出的 555.802363 nm，故此向量的 λ 为显式输入而非默认值）"
+    },
+    {
+      "name": "notebook cell 2: 1 MHz / 50 µm 反解功率",
+      "fn": "powerW",
+      "args": {
+        "d_ea0": 0.312316,
+        "fR_Hz": 1000000.0,
+        "wx_m": 5e-05,
+        "wy_m": 5e-05
+      },
+      "expect": {
+        "P_W": 3.26362e-07
+      },
+      "rtol": 0.0001,
+      "src": "notebook cell 2 表格 P_req = 0.000326 mW（notebook 硬编码 λ=556.0 nm；框架默认已改用 NIST 导出的 555.802363 nm，故此向量的 λ 为显式输入而非默认值）"
+    },
+    {
+      "name": "往返一致性：P → f → P",
+      "fn": "roundtrip",
+      "args": {
+        "d_ea0": 0.5,
+        "P_W": 0.037,
+        "wx_m": 1.8e-05,
+        "wy_m": 2.2e-05
+      },
+      "expect": {
+        "P_W": 0.037
+      },
+      "rtol": 1e-12,
+      "src": "内部自洽检查"
+    },
+    {
+      "name": "可分离形式与逐步链条一致",
+      "fn": "separable_vs_chain",
+      "args": {
+        "d_ea0": 0.312316,
+        "P_W": 0.4,
+        "wx_m": 1.8e-05,
+        "wy_m": 1.8e-05
+      },
+      "expect": {
+        "rel_diff": 0.0
+      },
+      "atol": 1e-14,
+      "src": "v6 引入可分离形式时的验证"
+    }
+  ],
+  "hyperfine": [
+    {
+      "name": "Δ_hf 符号：F′=3/2 在上",
+      "fn": "hfFactor",
+      "args": {
+        "D_Hz": 180000000.0
+      },
+      "expect": {
+        "factor": 0.970555
+      },
+      "rtol": 0.0001,
+      "src": "Δ_hf/(Δ+Δ_hf) = 5936/(180+5936)。若写成 (Δ−Δ_hf) 会得 1.031，符号即反"
+    },
+    {
+      "name": "大失谐相消：13 GHz",
+      "fn": "hfFactor",
+      "args": {
+        "D_Hz": 13000000000.0
+      },
+      "expect": {
+        "factor": 0.313478
+      },
+      "rtol": 0.0001,
+      "src": "忽略此因子会在 13 GHz 高估 3.2 倍"
+    },
+    {
+      "name": "CG: F′=3/2 π 支路",
+      "fn": "cg",
+      "args": {
+        "branch": "F32",
+        "leg": "pi"
+      },
+      "expect": {
+        "value": 0.8164966
+      },
+      "rtol": 1e-06,
+      "src": "√(2/3)，notebook D_linewidth 表 0.255005/0.312316"
+    },
+    {
+      "name": "CG: F′=3/2 σ 支路",
+      "fn": "cg",
+      "args": {
+        "branch": "F32",
+        "leg": "sigma"
+      },
+      "expect": {
+        "value": 0.5773503
+      },
+      "rtol": 1e-06,
+      "src": "√(1/3)，notebook D_linewidth 表 0.180316/0.312316"
+    },
+    {
+      "name": "π/σ 之比 = √2",
+      "fn": "cg_ratio",
+      "args": {
+        "branch": "F32"
+      },
+      "expect": {
+        "value": 1.4142136
+      },
+      "rtol": 1e-06,
+      "src": "rydcalc 交叉验证的唯一对上项（绝对值差 7.95e4 倍）"
+    }
+  ],
+  "raman": [
+    {
+      "name": "PRX 12,021027 工作点",
+      "fn": "ramanOmega",
+      "args": {
+        "d_ea0": 0.540947,
+        "P_W": 0.04,
+        "wx_m": 0.000365,
+        "wy_m": 0.000365,
+        "D_Hz": 180000000.0,
+        "S3": 0.836,
+        "theta_kB_deg": 90
+      },
+      "expect": {
+        "Omega_2pi_Hz": 1726000.0
+      },
+      "rtol": 0.02,
+      "src": "论文实测 1.77 MHz。本式 1.726 MHz，4% 内"
+    },
+    {
+      "name": "论文外推基准：13 GHz / 1 W / 1×0.02 mm",
+      "fn": "ramanOmega",
+      "args": {
+        "d_ea0": 0.540947,
+        "P_W": 1.0,
+        "wx_m": 0.001,
+        "wy_m": 2e-05,
+        "D_Hz": 13000000000.0,
+        "S3": 1.0,
+        "theta_kB_deg": 90
+      },
+      "expect": {
+        "Omega_2pi_Hz": 1538000.0
+      },
+      "rtol": 0.05,
+      "src": "论文给 1.47 MHz。仅在含超精细干涉因子时才对得上"
+    },
+    {
+      "name": "线偏振耦合为零",
+      "fn": "geomFactor",
+      "args": {
+        "S3": 0.0,
+        "theta_kB_deg": 90
+      },
+      "expect": {
+        "value": 0.0
+      },
+      "atol": 1e-15,
+      "src": "¹S₀ 电子角动量为零，只有矢量项能翻转核自旋"
+    },
+    {
+      "name": "光束平行于 B 时耦合为零",
+      "fn": "geomFactor",
+      "args": {
+        "S3": 1.0,
+        "theta_kB_deg": 0
+      },
+      "expect": {
+        "value": 0.0
+      },
+      "atol": 1e-15,
+      "src": "矢量光频移沿 k，与 B 平行则只移频不翻转"
+    },
+    {
+      "name": "λ/4 波片: θ=45° 给圆偏振",
+      "fn": "qwp_S3",
+      "args": {
+        "u_deg": 45
+      },
+      "expect": {
+        "S3": -1.0
+      },
+      "rtol": 1e-09,
+      "src": "S₃ = −sin2u，琼斯矩阵推导"
+    },
+    {
+      "name": "λ/4 波片: θ=0° 保持线偏振",
+      "fn": "qwp_S3",
+      "args": {
+        "u_deg": 0
+      },
+      "expect": {
+        "S3": 0.0
+      },
+      "atol": 1e-12,
+      "src": "线偏振入射且快轴对齐，不产生椭偏"
+    },
+    {
+      "name": "散射误差 @ 13 GHz",
+      "fn": "scatterError",
+      "args": {
+        "D_Hz": 13000000000.0
+      },
+      "expect": {
+        "value": 2.83e-06
+      },
+      "rtol": 0.05,
+      "src": "论文给 3×10⁻⁶。符号取反会得 7.5×10⁻⁶"
+    },
+    {
+      "name": "微分光频移 @ 论文工作点",
+      "fn": "lightShift_workpoint",
+      "args": {
+        "d_ea0": 0.540947,
+        "P_W": 0.04,
+        "wx_m": 0.000365,
+        "wy_m": 0.000365,
+        "D_Hz": 180000000.0,
+        "alpha_deg": 61.6
+      },
+      "expect": {
+        "shift_Hz": 55600
+      },
+      "rtol": 0.03,
+      "src": "论文 55.5 kHz。v3 及以前完全缺失此项，总误差低估约 3.7 倍"
+    }
+  ],
+  "wigner": [
+    {
+      "name": "3j(1,1,2;0,0,0)",
+      "fn": "w3j",
+      "args": {
+        "j": [
+          1,
+          1,
+          2
+        ],
+        "m": [
+          0,
+          0,
+          0
+        ]
+      },
+      "expect": {
+        "value": 0.36514837167
+      },
+      "rtol": 1e-10,
+      "src": "√(2/15)，与 sympy 吻合到 1e-16"
+    },
+    {
+      "name": "3j 半整数",
+      "fn": "w3j",
+      "args": {
+        "j": [
+          1.5,
+          1,
+          1.5
+        ],
+        "m": [
+          -0.5,
+          1,
+          -0.5
+        ]
+      },
+      "expect": {
+        "value": 0.3651483717
+      },
+      "rtol": 1e-09,
+      "src": "sympy: wigner_3j(3/2,1,3/2,-1/2,1,-1/2) = √(2/15)。期望值原为凭记忆填写，已由 sympy 核实修正"
+    },
+    {
+      "name": "6j(1,1,1,1,1,1)",
+      "fn": "w6j",
+      "args": {
+        "a": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "expect": {
+        "value": 0.1666666667
+      },
+      "rtol": 1e-09,
+      "src": "1/6，与 sympy 吻合"
+    },
+    {
+      "name": "6j 半整数",
+      "fn": "w6j",
+      "args": {
+        "a": [
+          1,
+          2.5,
+          1.5,
+          3.5,
+          2,
+          1
+        ]
+      },
+      "expect": {
+        "value": -0.1825741858
+      },
+      "rtol": 1e-09,
+      "src": "sympy.physics.wigner.wigner_6j"
+    },
+    {
+      "name": "6j 三角不等式不满足返回 0",
+      "fn": "w6j",
+      "args": {
+        "a": [
+          0.5,
+          1,
+          1.5,
+          0.5,
+          0.5,
+          1
+        ]
+      },
+      "expect": {
+        "value": 0.0
+      },
+      "atol": 1e-15,
+      "src": "sympy 在此情形抛异常，本实现返回 0 以便批量扫描"
+    },
+    {
+      "name": "由 Wigner 计算的 CG 与硬编码值一致：F′=3/2 伸展",
+      "fn": "cg_computed",
+      "args": {
+        "Fp": 1.5,
+        "mp": 1.5,
+        "q": 1
+      },
+      "expect": {
+        "value": 1.0
+      },
+      "rtol": 1e-09,
+      "src": "⟨1/2,1/2;1,1|3/2,3/2⟩ = 1"
+    },
+    {
+      "name": "由 Wigner 计算的 CG：F′=3/2 π 支路",
+      "fn": "cg_computed",
+      "args": {
+        "Fp": 1.5,
+        "mp": 0.5,
+        "q": 0
+      },
+      "expect": {
+        "value": 0.8164965809
+      },
+      "rtol": 1e-09,
+      "src": "√(2/3)，与 notebook D_linewidth 表 0.255005/0.312316 一致"
+    },
+    {
+      "name": "由 Wigner 计算的 CG：F′=1/2 π 支路为负",
+      "fn": "cg_computed",
+      "args": {
+        "Fp": 0.5,
+        "mp": 0.5,
+        "q": 0
+      },
+      "expect": {
+        "value": -0.5773502692
+      },
+      "rtol": 1e-09,
+      "src": "负号是拉曼相消干涉 Δ_hf/(Δ+Δ_hf) 的来源，此前仅由推导得出，现由 Wigner 独立确认"
+    },
+    {
+      "name": "求和规则：每个激发态子能级 CG 平方和为 1",
+      "fn": "sumrule",
+      "args": {
+        "I": 0.5,
+        "J": 0,
+        "Jp": 1,
+        "Fp": 1.5,
+        "mp": 0.5
+      },
+      "expect": {
+        "value": 1.0
+      },
+      "rtol": 1e-09,
+      "src": "J=0 基态的求和规则，是 6j 因子被 d_cyc 吸收的依据"
+    },
+    {
+      "name": "求和规则对 F′=1/2 同样成立",
+      "fn": "sumrule",
+      "args": {
+        "I": 0.5,
+        "J": 0,
+        "Jp": 1,
+        "Fp": 0.5,
+        "mp": 0.5
+      },
+      "expect": {
+        "value": 1.0
+      },
+      "rtol": 1e-09,
+      "src": "两支必须都满足，否则归一化约定有误"
+    }
+  ],
+  "dipole_convention": [
+    {
+      "name": "NIST 能级导出真空波长",
+      "fn": "lamVac",
+      "args": {
+        "ek_cm": 17992.007
+      },
+      "expect": {
+        "lam_nm": 555.802363
+      },
+      "rtol": 1e-08,
+      "src": "λ=10⁷/E_k。notebook cell 3 由 rydcalc 独立算出同值，两条路径印证"
+    },
+    {
+      "name": "d_red 由 Γ 反解（Edmonds 约定）",
+      "fn": "dFromGamma",
+      "args": {
+        "gamma_Hz": 183000.0,
+        "lam_nm": 555.802363,
+        "Jp": 1
+      },
+      "expect": {
+        "d_au": 0.540659
+      },
+      "rtol": 1e-05,
+      "src": "hfs-matrix-element-calculator v2 的 dFromGamma，含 (2Jp+1) 因子"
+    },
+    {
+      "name": "d_red = √3 · d_cyc 两条路径一致",
+      "fn": "dipole_crosscheck",
+      "args": {
+        "gamma_Hz": 183000.0,
+        "lam_nm": 555.802363
+      },
+      "expect": {
+        "ratio": 1.0
+      },
+      "rtol": 1e-09,
+      "src": "Edmonds 路径与线宽标定路径必须自洽。历史上此处栽过两次"
+    },
+    {
+      "name": "Γ=182 kHz 对照值",
+      "fn": "dFromGamma",
+      "args": {
+        "gamma_Hz": 182000.0,
+        "lam_nm": 555.802363,
+        "Jp": 1
+      },
+      "expect": {
+        "d_au": 0.53918
+      },
+      "rtol": 1e-05,
+      "src": "文献分散 182–184 kHz，记录备选值以便切换时比对"
+    }
+  ],
+  "applicability": [
+    {
+      "name": "J=0 基态：d_cyc 简化成立",
+      "fn": "dcyc_valid",
+      "args": {
+        "Jg": 0,
+        "Jp": 1
+      },
+      "expect": {
+        "ok": 1
+      },
+      "atol": 0,
+      "src": "¹S₀ 基态只有一个 F，求和规则使 6j 因子被 d_cyc 定义吸收"
+    },
+    {
+      "name": "J=1/2 基态：d_cyc 简化不成立",
+      "fn": "dcyc_valid",
+      "args": {
+        "Jg": 0.5,
+        "Jp": 0.5
+      },
+      "expect": {
+        "ok": 0
+      },
+      "atol": 0,
+      "src": "碱金属基态有两个 F，6j 因子不再被吸收。此前会静默返回 NaN，v0.3.1 起给出说明"
+    }
+  ]
+}

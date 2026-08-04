@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>超精细跃迁矩阵元计算器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAFAF7;--surf:#FFFFFF;--ink:#15181B;--ink2:#4A5054;--muted:#7A807C;
+  --line:#E4E6E1;--line2:#CFD3CD;--ok:#1D7A55;--bad:#B4342E;--warnc:#9A6B12;
+  --acc:#3E6E4E;--acc-soft:#EEF3EF;
+  --sans:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root{--paper:#101211;--surf:#181B1A;--ink:#E8EAE6;
+  --ink2:#B4B9B4;--muted:#8A908B;--line:#282C2A;--line2:#3A3F3C;--ok:#5BC49A;
+  --bad:#E88A84;--warnc:#D9A93E;--acc-soft:#1C2620;}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6}
+.wrap{max-width:1200px;margin:0 auto;padding:32px 24px 72px}
+header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:26px}
+h1{font-size:26px;font-weight:500;letter-spacing:-.02em;margin:0 0 4px}
+.sub{margin:0;color:var(--muted);font-size:13px;font-family:var(--mono)}
+.grid{display:grid;grid-template-columns:330px 1fr;gap:26px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px}
+.card>h2{font-size:12px;font-weight:500;letter-spacing:.05em;color:var(--muted);margin:0 0 14px;font-family:var(--mono)}
+label{display:block;font-size:12px;color:var(--ink2);margin:0 0 5px;font-family:var(--mono)}
+select,input{width:100%;padding:8px 10px;font:400 14px/1.4 var(--mono);color:var(--ink);
+  background:var(--paper);border:1px solid var(--line2);border-radius:6px}
+select:focus-visible,input:focus-visible,button:focus-visible,tr:focus-visible,.def:focus-visible
+  {outline:2px solid var(--acc);outline-offset:2px}
+.field{margin-bottom:13px}
+.locked{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-family:var(--mono);
+  font-size:13px;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:11px 13px;margin:0}
+.locked dt{color:var(--muted)}
+.locked dd{margin:0}
+.locknote{font-size:11px;color:var(--muted);font-family:var(--mono);margin:7px 0 0;line-height:1.5}
+.seg{display:flex;margin-bottom:12px;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;padding:7px 4px;font:500 12px var(--mono);
+  background:var(--paper);color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--acc);color:#fff}
+.specbar{height:10px;border-radius:5px;position:relative;background:
+  linear-gradient(90deg,#4A3560 0%,#4A3560 17%,#6B3FA0 20%,#3A47C8 30%,#2E9BD6 38%,
+  #54C46A 45%,#D8D53A 52%,#E88A2E 60%,#C93A30 70%,#6E2622 82%,#6E2622 100%)}
+.tick{position:absolute;top:-5px;width:3px;height:20px;border-radius:2px;background:var(--ink);
+  box-shadow:0 0 0 2px var(--surf)}
+.speclab{display:flex;justify-content:space-between;font:400 11px var(--mono);color:var(--muted);margin-top:5px}
+.badge{display:inline-block;padding:1px 6px;border-radius:5px;font:500 11px var(--mono);
+  background:var(--acc-soft);color:var(--acc);border:1px solid var(--acc)}
+.badge.cy{border-color:var(--warnc);color:var(--warnc);background:transparent}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-family:var(--mono);font-size:13px;margin:0}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.big{font-family:var(--mono);font-size:21px;font-weight:500;color:var(--acc)}
+.formula{font-family:var(--mono);font-size:12.5px;color:var(--ink2);background:var(--paper);
+  border-left:2px solid var(--acc);padding:9px 12px;margin:10px 0 0;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:11px;padding:0 8px 7px;
+  border-bottom:1px solid var(--line2);white-space:nowrap}
+td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.z{cursor:pointer}
+tr.z:hover td{background:var(--acc-soft)}
+tr.det td{background:var(--paper);white-space:normal;padding:12px 14px}
+.tscroll{max-height:520px;overflow:auto}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px}
+.filters>div{min-width:92px}
+.filters label{margin-bottom:4px}
+.filters select{padding:6px 8px;font-size:13px}
+.cbx{display:flex;align-items:center;gap:6px;font:400 12px var(--mono);color:var(--ink2);
+  padding-bottom:7px;cursor:pointer}
+.cbx input{width:auto;margin:0}
+.checks{display:flex;flex-wrap:wrap;gap:8px}
+.chk{display:flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--line2);
+  border-radius:7px;font-family:var(--mono);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.dot.g{background:var(--ok)}.dot.r{background:var(--bad)}
+button{font:500 13px var(--sans);padding:8px 15px;border-radius:7px;border:1px solid var(--line2);
+  background:var(--surf);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--acc);color:var(--acc)}
+.wig{display:inline-flex;align-items:center;vertical-align:middle;margin:0 2px}
+.wig .br{font-size:2em;font-weight:300;line-height:.9;color:var(--muted)}
+.wig .m{display:inline-grid;grid-template-columns:repeat(3,auto);gap:0 7px;padding:0 3px;font-size:.86em;text-align:center}
+.step{font-family:var(--mono);font-size:12.5px;line-height:2.05;color:var(--ink2)}
+.step b{color:var(--ink);font-weight:500}
+.note{font-size:12px;color:var(--muted);line-height:1.55;margin:12px 0 0}
+details{margin-top:14px}
+summary{cursor:pointer;font:500 12px var(--mono);color:var(--acc);padding:4px 0}
+.audit{font-size:12px;margin-top:6px}
+.audit table{font-size:11.5px;margin-bottom:6px}
+.audit td{white-space:normal}
+.warn{border-left:2px solid var(--warnc);background:var(--paper);padding:9px 12px;
+  font-size:12px;color:var(--ink2);margin-top:12px;line-height:1.55}
+.def{border-bottom:1px dotted var(--line2);cursor:help}
+#tip{position:absolute;z-index:100;background:var(--ink);color:var(--paper);
+  padding:10px 12px;border-radius:8px;font:400 12.5px/1.6 var(--sans);
+  opacity:0;pointer-events:none;transition:opacity .12s;left:0;top:0;max-width:300px}
+#tip.on{opacity:1}
+.selftest{font-family:var(--mono);font-size:12px;margin-top:10px;white-space:pre-wrap;
+  background:var(--paper);border-left:2px solid var(--line2);padding:9px 12px;line-height:1.7}
+textarea{width:100%;padding:9px 11px;font:400 13px/1.6 var(--mono);color:var(--ink);
+  background:var(--paper);border:1px solid var(--line2);border-radius:6px;resize:vertical}
+textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.badge.warn2{border-color:var(--warnc);color:var(--warnc);background:transparent}
+.chl{border-left:2px solid var(--line2);padding:0 0 0 14px;margin:0 0 18px}
+.chl:last-child{margin-bottom:0}
+.chl h3{margin:0 0 6px;font:500 13px var(--mono);color:var(--acc)}
+.chl ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink2);line-height:1.7}
+.chl .rem{margin:8px 0 0;font-size:12px;color:var(--muted);line-height:1.6;
+  background:var(--paper);padding:8px 11px;border-radius:0 6px 6px 0;border-left:2px solid var(--warnc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:0 0 12px;margin:0 0 18px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:13px">
+  <span style="font-weight:500;color:var(--ink)">¹⁷¹Yb 工具集</span>
+  <a href="../index.html" style="color:var(--muted);text-decoration:none">首页</a>
+  <a href="rabi-power.html" style="color:var(--muted);text-decoration:none">Rabi–功率</a>
+  <a href="raman-qubit.html" style="color:var(--muted);text-decoration:none">拉曼比特</a>
+  <a href="hfs-matrix-element.html" style="color:var(--acc);text-decoration:none;font-weight:500">超精细矩阵元</a>
+  <span style="flex:1"></span>
+  <span style="font-size:11px;color:var(--muted)" id="buildstamp"></span>
+</nav>
+<header>
+  <h1>超精细跃迁矩阵元计算器</h1>
+  <p class="sub">中性原子 · 碱金属与碱土 · <span class="def" tabindex="0" data-def="Edmonds（3j）约定：⟨j′m′|T_q|jm⟩ = (−1)^(j′−m′) · 3j(j′,1,j; −m′,q,m) · ⟨j′‖T‖j⟩。此约定下约化矩阵元的模是对称的，|⟨J′‖d‖J⟩| = |⟨J‖d‖J′⟩|，不含 √(2J′+1) 因子。">Edmonds 约定</span></p>
+</header>
+
+<div class="grid">
+<aside>
+  <div class="card">
+    <h2>选择跃迁</h2>
+    <div class="field"><label for="el">元素</label><select id="el"></select></div>
+    <div class="field"><label for="tr">跃迁</label><select id="tr"></select></div>
+    <div class="field"><label for="iso">同位素</label><select id="iso"></select></div>
+    <div class="specbar"><div class="tick" id="tick"></div></div>
+    <div class="speclab"><span>250</span><span id="wlLab"></span><span>900 nm</span></div>
+  </div>
+
+  <div class="card">
+    <h2>已锁定</h2>
+    <dl class="locked" id="lockBox"></dl>
+    <p class="locknote">核自旋、角动量、波长由同位素与能级唯一决定，改动只会引入错误，故不可编辑。</p>
+  </div>
+
+  <div class="card">
+    <h2>可调（测量 / 计算值）</h2>
+    <div class="seg" role="group" aria-label="主控量">
+      <button id="mG" aria-pressed="true">以 Γ 为准</button>
+      <button id="mD" aria-pressed="false">以 d 为准</button>
+    </div>
+    <div class="field"><label for="gam">Γ/2π (Hz)</label><input id="gam" type="number" step="any"></div>
+    <div class="field"><label for="dman">⟨J′‖d‖J⟩ (a.u.)</label><input id="dman" type="number" step="0.0001"></div>
+    <button id="reset">恢复数据库值</button>
+    <p class="note">Γ 与 d 被 Γ = (4/3)α³ω³d²/(2J′+1) 绑定，无法独立设定。切换主控量决定谁是输入、谁是导出。</p>
+  </div>
+</aside>
+
+<main>
+  <div class="card">
+    <h2>组态与元素</h2>
+    <dl class="kv" id="info"></dl>
+    <div class="warn" id="dbwarn"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="def" tabindex="0" data-def="约化矩阵元：Wigner-Eckart 定理中剥离全部磁量子数依赖（3j 符号）后剩下的标量。它承载全部动力学信息，需由实验或多体计算给出；本页其余数值都是它乘上纯角动量系数。">约化矩阵元</span></h2>
+    <div class="big" id="dVal"></div>
+    <div class="formula" id="dForm"></div>
+    <p class="note" id="dNote"></p>
+  </div>
+
+  <div class="card">
+    <h2><span class="def" tabindex="0" data-def="求和规则源自 3j/6j 符号的正交性，本质是不可约表示的完备性。任一条不成立，说明输入或约定不自洽。">求和规则检验</span></h2>
+    <div class="checks" id="checks"></div>
+    <details><summary>展开逐项审计</summary><div class="audit" id="audit"></div></details>
+  </div>
+
+  <div class="card">
+    <h2><span class="def" tabindex="0" data-def="超精细约化矩阵元 ⟨F′‖d‖F⟩：由 ⟨J′‖d‖J⟩ 经一个 6j 符号分解得到。6j 出现的原因是电偶极算符只作用于电子，核自旋是旁观者。">超精细约化矩阵元</span> ⟨F′‖d‖F⟩</h2>
+    <table><thead><tr><th>F</th><th>F′</th>
+      <th class="num"><span class="def" tabindex="0" data-def="以 ⟨J′‖d‖J⟩ 为单位 1 的纯角动量系数。它是精确有理数或其平方根，不带任何不确定度。">系数</span></th>
+      <th class="num">a.u.</th>
+      <th class="num"><span class="def" tabindex="0" data-def="相对线强 = |⟨F′‖d‖F⟩|² / |⟨J′‖d‖J⟩|²，即该超精细分量分到的振子强度份额。">相对线强</span></th></tr></thead>
+    <tbody id="tA"></tbody></table>
+  </div>
+
+  <div class="card">
+    <h2><span class="def" tabindex="0" data-def="塞曼分量 ⟨F′m′|d_q|Fm⟩：由超精细约化矩阵元经一个 3j 符号展开。3j 自动强制选择定则 m′ = m + q，无需额外假设。">塞曼分量</span> ⟨F′m′|d<sub>q</sub>|Fm⟩ <span class="badge" id="nz"></span></h2>
+    <div class="filters">
+      <div><label for="fF">基态 F</label><select id="fF"></select></div>
+      <div><label for="fFp">激发态 F′</label><select id="fFp"></select></div>
+      <div><label for="fQ">偏振</label><select id="fQ">
+        <option value="">全部</option><option value="1">σ⁺</option>
+        <option value="0">π</option><option value="-1">σ⁻</option></select></div>
+      <label class="cbx"><input type="checkbox" id="fCyc">
+        <span class="def" tabindex="0" data-def="循环跃迁：该激发态子能级只有一条衰变通道，散射光子后原子必然回到原态，可反复散射。是荧光成像与态选择读出的基础。">只看循环跃迁</span></label>
+    </div>
+    <div class="tscroll">
+    <table><thead><tr><th>始态</th>
+      <th><span class="def" tabindex="0" data-def="光子偏振的球张量分量 q。σ⁺ (q=+1) 使 m 增 1，σ⁻ (q=−1) 减 1，π (q=0) 不变。">偏振</span></th>
+      <th>末态</th><th class="num">系数</th><th class="num">a.u.</th><th></th></tr></thead>
+    <tbody id="tB"></tbody></table>
+    </div>
+    <p class="note" id="tbNote"></p>
+  </div>
+
+  <div class="card">
+    <h2>本条目备注 <span class="badge" id="chkBadge"></span></h2>
+    <textarea id="note" rows="3" placeholder="记录你核对的依据、存疑之处或待办。例：Γ 已用 XXX (PRA 2024) 核对，与 NIST 差 0.3%。"></textarea>
+    <p class="note" id="noteInfo"></p>
+  </div>
+
+  <div class="card">
+    <h2>自检</h2>
+    <button id="run">运行内置自检</button>
+    <p class="note">在你的浏览器里现场校验 3j/6j 实现：比对独立已知值，并对全库 10 元素 × 全同位素 × 全跃迁扫描三条求和规则。任何一项失败都说明这份文件不可信。</p>
+    <div class="selftest" id="stOut" hidden></div>
+  </div>
+
+  <div class="card">
+    <h2>更新记录</h2>
+    <div id="chlog"></div>
+  </div>
+
+  <div class="card">
+    <h2>导出</h2>
+    <button id="csv">下载 CSV</button>
+    <button id="tex">复制 LaTeX 表格</button>
+    <button id="json">导出完整数据库 JSON</button>
+    <p class="note" id="exNote"></p>
+  </div>
+</main>
+</div>
+</div>
+
+<script src="../shared/wigner.js"></script>
+<script src="../shared/constants.js"></script>
+<script src="../shared/physics.js"></script>
+<script src="../shared/units.js"></script>
+<script src="../shared/urlstate.js"></script>
+<script src="../shared/version.js"></script>
+<script>YBV.render('buildstamp');</script>
+<script>
+"use strict";
+/* Wigner 3j/6j 与角动量代数来自 shared/wigner.js —— 勿在本文件重复实现。
+ * 该模块由 tests/vectors.json 校验（与 sympy 吻合到 1e-16）。 */
+const {w3j,w6j,sixj,redHFS,zee,frange,pretty}=YBW;
+const ALPHA=YBW.ALPHA,EH=YBW.EH,C=YBC.SI.c;
+const omAU=lamNm=>(C/(lamNm*1e-9))/EH;
+const dFromGamma=(g,lam,Jp)=>YBW.dFromGamma(g,lam,Jp);
+const gammaFromD=(d,lam,Jp)=>YBW.gammaFromD(d,lam,Jp);
+
+// 数据库：只存权威可溯源量。
+//   ek  = 激发态能级 [cm^-1]（NIST ASD）→ 真空波长由 lamVac = 1e7/ek 导出，
+//         从根上避免空气/真空波长混用。
+//   lam = 若该跃迁的绝对频率测量精度高于 ek（碱金属），则直接给真空波长。
+//   gam = Γ/2π [Hz]；gu = 不确定度或文献分散；src = 出处。
+// 不存任何文献 d 值 —— d 一律由 Γ 反解，保证与本页 Edmonds 约定自洽。
+// ============================ 更新记录 ============================
+// 添加一条：在数组【顶部】插入对象，字段如下
+//   v    版本号（字符串）
+//   date 日期 YYYY-MM-DD
+//   by   修改人
+//   chg  改动条目（字符串数组）
+//   note 备注（可选）—— 写理由、依据、存疑或待办，比 chg 更自由
+const CHANGELOG=[
+{v:"2.2",date:"2026-07-30",by:"初版协作",
+ chg:["公式每一项加入悬浮解释，全页共 32 处",
+      "提示浮层由 CSS 伪元素改为 JS 驱动，修复在滚动容器内被 overflow 裁切的问题",
+      "新增内置自检：11 项检查 + 全库 42 组合的求和规则扫描",
+      "新增更新记录与条目备注，备注随 CSV / JSON 导出"],
+ note:"自检含与 Steck 数据表的交叉验证。加入自检的直接动因是本项目在约定问题上曾两次判断失误，"
+     +"口头保证不如让使用者在自己浏览器里现场复核。"},
+{v:"2.1",date:"2026-07-30",by:"初版协作",
+ chg:["数据库改存激发态能级 E_k，真空波长由 λ = 10⁷/E_k 导出",
+      "修正 4 处误填为空气波长的条目：Mg ¹P₁、Mg ³P₁、Hg ³P₁、Cd ³P₁（偏差约 +290 ppm）",
+      "修正 Sr ¹S₀–¹P₁ 线宽 30.5 → 32 MHz",
+      "修正 Yb ¹S₀–¹P₁ 线宽 29 → 28 MHz",
+      "每条跃迁新增不确定度 gu 与出处 src 字段"],
+ note:"约定问题定论：d_Edmonds = √(2J+1) · d_CG。此前两次判断均有误——先错误地把 0.543 除以 √3，"
+     +"后又错误地否认 √2 因子存在。查 Steck 原表后确认该因子真实，且 J=0 时恰为 1，"
+     +"这解释了为何 Yb 的推导始终未受影响。教训：数据库不存文献 d 值，一律由 Γ 反解。"},
+{v:"2.0",date:"2026-07-30",by:"初版协作",
+ chg:["推广到任意 J，加入 Rb / Cs / K / Na（J = 1/2 基态）",
+      "I、J′、λ 改为只读；Γ 与 d 保留可调并加入主控量切换",
+      "塞曼分量表加入 F / F′ / 偏振筛选与循环跃迁标记",
+      "求和规则检验加入折叠式逐项审计"],
+ note:"Cs D2 有 126 条分量、⁴⁰K D2 有 146 条，筛选是必需而非可选。"},
+{v:"1.0",date:"2026-07-30",by:"初版协作",
+ chg:["JS 版 Wigner 3j / 6j（Racah 公式 + 对数阶乘）",
+      "J = 0 基态的碱土/类碱土数据库",
+      "逐因子推导展开、R1/R2/R3 检验灯、CSV / LaTeX 导出"],
+ note:"3j/6j 与 sympy 吻合到 1e-15。"}
+];
+// 核对状态由 gu 字段自动判定，无需单独维护
+const chkStatus=t=>/待核对/.test(t.gu||"")?{s:"待核对",ok:false}:{s:"已核对",ok:true};
+// 用户备注：以 元素|跃迁|同位素 为键，保存在内存中，随导出文件一起走
+const NOTES={};
+const noteKey=(d,t,s)=>`${d.el}|${t.n.split("  ")[0]}|${s.a}`;
+
+const DB=[
+{el:"Rb",name:"铷",Z:37,J:.5,gcfg:"5s  \u00B2S\u2081\u2044\u2082",
+ iso:[{a:87,I:1.5,ab:"27.83(2)%",hfs:"6.834682610905 GHz"},
+      {a:85,I:2.5,ab:"72.17(2)%",hfs:"3.0357324390 GHz"}],
+ tr:[{n:"D2  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2083\u2044\u2082",Jp:1.5,lam:780.241210,gam:6.065e6,
+      gu:"\u00B10.009 MHz",src:"Steck; \u03C4=26.24(4) ns (Volz 1996)",ecfg:"5p  \u00B2P\u2083\u2044\u2082"},
+     {n:"D1  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2081\u2044\u2082",Jp:.5,lam:794.978851,gam:5.746e6,
+      gu:"\u00B10.008 MHz",src:"Steck; \u03C4=27.70(4) ns",ecfg:"5p  \u00B2P\u2081\u2044\u2082"}]},
+{el:"Cs",name:"铯",Z:55,J:.5,gcfg:"6s  \u00B2S\u2081\u2044\u2082",
+ iso:[{a:133,I:3.5,ab:"100%",hfs:"9.192631770 GHz（定义秒）"}],
+ tr:[{n:"D2  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2083\u2044\u2082",Jp:1.5,lam:852.347276,gam:5.234e6,
+      gu:"NIST A_ki\u21925.214 (AA)",src:"Steck; NIST A_ki=3.276\u00D710\u2077 s\u207B\u00B9",ecfg:"6p  \u00B2P\u2083\u2044\u2082"},
+     {n:"D1  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2081\u2044\u2082",Jp:.5,lam:894.592960,gam:4.575e6,
+      gu:"NIST A_ki\u21924.568 (A)",src:"Steck; NIST A_ki=2.87\u00D710\u2077 s\u207B\u00B9",ecfg:"6p  \u00B2P\u2081\u2044\u2082"}]},
+{el:"K",name:"钾",Z:19,J:.5,gcfg:"4s  \u00B2S\u2081\u2044\u2082",
+ iso:[{a:39,I:1.5,ab:"93.26%",hfs:"461.7197 MHz"},{a:41,I:1.5,ab:"6.73%",hfs:"254.0139 MHz"},
+      {a:40,I:4,ab:"0.0117%",hfs:"1.2857 GHz"}],
+ tr:[{n:"D2  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2083\u2044\u2082",Jp:1.5,lam:766.700922,gam:6.035e6,
+      gu:"NIST A_ki\u21926.16 (B+)",src:"Tiecke; NIST A_ki=3.87\u00D710\u2077 s\u207B\u00B9",ecfg:"4p  \u00B2P\u2083\u2044\u2082"},
+     {n:"D1  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2081\u2044\u2082",Jp:.5,lam:770.108385,gam:5.956e6,
+      gu:"NIST A_ki\u21926.08 (B+)",src:"Tiecke; NIST A_ki=3.82\u00D710\u2077 s\u207B\u00B9",ecfg:"4p  \u00B2P\u2081\u2044\u2082"}]},
+{el:"Na",name:"钠",Z:11,J:.5,gcfg:"3s  \u00B2S\u2081\u2044\u2082",
+ iso:[{a:23,I:1.5,ab:"100%",hfs:"1.7716261288 GHz"}],
+ tr:[{n:"D2  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2083\u2044\u2082",Jp:1.5,lam:589.158326,gam:9.7946e6,
+      gu:"NIST A_ki\u21929.72 (AA)",src:"Steck; NIST A_ki=6.11\u00D710\u2077 s\u207B\u00B9",ecfg:"3p  \u00B2P\u2083\u2044\u2082"},
+     {n:"D1  \u00B2S\u2081\u2044\u2082 \u2192 \u00B2P\u2081\u2044\u2082",Jp:.5,lam:589.755815,gam:9.7654e6,
+      gu:"NIST A_ki\u21929.71 (AA)",src:"Steck; NIST A_ki=6.10\u00D710\u2077 s\u207B\u00B9",ecfg:"3p  \u00B2P\u2081\u2044\u2082"}]},
+{el:"Yb",name:"镱",Z:70,J:0,gcfg:"4f\u00B9\u2074 6s\u00B2  \u00B9S\u2080",
+ iso:[{a:171,I:.5,ab:"14.3%",hfs:"\u2014 (J=0)"},{a:173,I:2.5,ab:"16.1%",hfs:"\u2014 (J=0)"},
+      {a:174,I:0,ab:"31.9%",hfs:"\u2014"},{a:176,I:0,ab:"12.7%",hfs:"\u2014"}],
+ tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:17992.007,gam:182e3,
+      gu:"文献分散 182\u2013184 kHz",src:"\u03C4=874 ns; NIST ASD 能级",ecfg:"4f\u00B9\u2074 6s6p  \u00B3P\u2081"},
+     {n:"\u00B9S\u2080 \u2192 \u00B9P\u2081",Jp:1,ek:25068.222,gam:28e6,
+      gu:"文献分散 28\u201329 MHz",src:"\u03C4=5.68 ns; NIST ASD 能级",ecfg:"4f\u00B9\u2074 6s6p  \u00B9P\u2081"}]},
+{el:"Sr",name:"锶",Z:38,J:0,gcfg:"5s\u00B2  \u00B9S\u2080",
+ iso:[{a:87,I:4.5,ab:"7.0%",hfs:"\u2014 (J=0)"},{a:88,I:0,ab:"82.6%",hfs:"\u2014"},
+      {a:86,I:0,ab:"9.9%",hfs:"\u2014"}],
+ tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:14504.334,gam:7.5e3,
+      gu:"文献分散 7.5\u20137.6 kHz",src:"\u03C4\u224821 \u03BCs; NIST ASD 能级",ecfg:"5s5p  \u00B3P\u2081"},
+     {n:"\u00B9S\u2080 \u2192 \u00B9P\u2081",Jp:1,ek:21698.452,gam:32e6,
+      gu:"已修正（原 30.5 偏低）",src:"NIST A_ki=2.01\u00D710\u2078 s\u207B\u00B9 \u2192 31.99 MHz",ecfg:"5s5p  \u00B9P\u2081"}]},
+{el:"Ca",name:"钙",Z:20,J:0,gcfg:"4s\u00B2  \u00B9S\u2080",
+ iso:[{a:43,I:3.5,ab:"0.135%",hfs:"\u2014 (J=0)"},{a:40,I:0,ab:"96.94%",hfs:"\u2014"}],
+ tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:15210.063,gam:400,
+      gu:"量级值，待核对",src:"NIST ASD 能级",ecfg:"4s4p  \u00B3P\u2081"},
+     {n:"\u00B9S\u2080 \u2192 \u00B9P\u2081",Jp:1,ek:23652.304,gam:34.70e6,
+      gu:"NIST 精度等级 B+",src:"NIST A_ki=2.18\u00D710\u2078 s\u207B\u00B9",ecfg:"4s4p  \u00B9P\u2081"}]},
+{el:"Mg",name:"镁",Z:12,J:0,gcfg:"3s\u00B2  \u00B9S\u2080",
+ iso:[{a:25,I:2.5,ab:"10.00%",hfs:"\u2014 (J=0)"},{a:24,I:0,ab:"78.99%",hfs:"\u2014"}],
+ tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:21870.464,gam:31,
+      gu:"量级值，待核对",src:"NIST ASD 能级（波长已修正为真空）",ecfg:"3s3p  \u00B3P\u2081"},
+     {n:"\u00B9S\u2080 \u2192 \u00B9P\u2081",Jp:1,ek:35051.264,gam:78.78e6,
+      gu:"NIST 精度等级 B",src:"NIST A_ki=4.95\u00D710\u2078 s\u207B\u00B9（波长已修正）",ecfg:"3s3p  \u00B9P\u2081"}]},
+{el:"Hg",name:"汞",Z:80,J:0,gcfg:"5d\u00B9\u2070 6s\u00B2  \u00B9S\u2080",
+ iso:[{a:199,I:.5,ab:"16.87%",hfs:"\u2014 (J=0)"},{a:201,I:1.5,ab:"13.18%",hfs:"\u2014 (J=0)"},
+      {a:202,I:0,ab:"29.86%",hfs:"\u2014"}],
+ tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:39412.300,gam:1.273e6,
+      gu:"NIST 精度等级 B",src:"NIST A_ki=8.00\u00D710\u2076 s\u207B\u00B9（波长已修正）",ecfg:"5d\u00B9\u2070 6s6p  \u00B3P\u2081"}]},
+{el:"Cd",name:"镉",Z:48,J:0,gcfg:"4d\u00B9\u2070 5s\u00B2  \u00B9S\u2080",
+ iso:[{a:111,I:.5,ab:"12.80%",hfs:"\u2014 (J=0)"},{a:113,I:.5,ab:"12.22%",hfs:"\u2014 (J=0)"},
+      {a:114,I:0,ab:"28.73%",hfs:"\u2014"}],
+ tr:[{n:"\u00B9S\u2080 \u2192 \u00B3P\u2081",Jp:1,ek:30656.087,gam:66.7e3,
+      gu:"量级值，待核对",src:"NIST ASD 能级（波长已修正为真空）",ecfg:"4d\u00B9\u2070 5s5p  \u00B3P\u2081"}]}];
+// Edlén 空气折射率（760 torr, 22 °C, 干空气），仅用于显示空气波长对照
+function nAir(lamNm){
+  const k=1000/lamNm, k2=k*k;
+  const t=8342.13+2406030/(130-k2)+15997/(38.9-k2);
+  return 1+t*(0.00138823*760/(1+0.003671*22))*1e-8;
+}
+// 真空波长：优先用高精度 lam，否则由能级 ek 导出
+const lamVac=t=>t.lam!==undefined?t.lam:1e7/t.ek;
+
+const $=id=>document.getElementById(id);
+// ---- 悬浮解释浮层（JS 驱动，可穿出 overflow 容器）----
+const TIP=document.createElement("div");TIP.id="tip";document.body.appendChild(TIP);
+function showTip(el){
+  const t=el.getAttribute("data-def");if(!t)return;
+  TIP.textContent=t;TIP.classList.add("on");
+  const r=el.getBoundingClientRect(),w=Math.min(300,innerWidth-24);
+  TIP.style.maxWidth=w+"px";
+  let x=Math.min(r.left+scrollX,scrollX+innerWidth-w-12);
+  TIP.style.left=Math.max(x,scrollX+12)+"px";
+  TIP.style.top=(r.bottom+scrollY+7)+"px";
+}
+const hideTip=()=>TIP.classList.remove("on");
+document.addEventListener("mouseover",e=>{
+  const el=e.target.closest?.("[data-def]");el?showTip(el):hideTip();});
+document.addEventListener("focusin",e=>{
+  const el=e.target.closest?.("[data-def]");el?showTip(el):hideTip();});
+document.addEventListener("focusout",hideTip);
+addEventListener("scroll",hideTip,{passive:true});
+// 把一段文字包成可悬浮解释项
+const D=(txt,def)=>`<span class="def" tabindex="0" data-def="${String(def).replace(/"/g,"&quot;")}">${txt}</span>`;
+const half=v=>{const r=Math.round(2*v);return r%2?(r+"/2"):String(r/2);};
+const sh=v=>(v<0?"\u2212":"")+half(Math.abs(v));
+const pol=q=>q>0?"\u03C3\u207A":(q<0?"\u03C3\u207B":"\u03C0");
+const fmtHz=g=>!isFinite(g)?"\u2014":g>=1e6?(g/1e6).toPrecision(4)+" MHz"
+  :g>=1e3?(g/1e3).toPrecision(4)+" kHz":g.toPrecision(3)+" Hz";
+let MODE="G",ST={};
+
+function wl2rgb(nm){
+  if(nm<380)return[95,66,132];
+  if(nm>780)return[128,44,40];
+  let r,g,b;
+  if(nm<440){r=-(nm-440)/60;g=0;b=1;}
+  else if(nm<490){r=0;g=(nm-440)/50;b=1;}
+  else if(nm<510){r=0;g=1;b=-(nm-510)/20;}
+  else if(nm<580){r=(nm-510)/70;g=1;b=0;}
+  else if(nm<645){r=1;g=-(nm-645)/65;b=0;}
+  else{r=1;g=0;b=0;}
+  return[r,g,b].map(v=>Math.round(255*Math.max(0,Math.min(1,v))));
+}
+function setAccent(nm){
+  const[r,g,b]=wl2rgb(nm);
+  const dark=matchMedia("(prefers-color-scheme:dark)").matches;
+  const k=dark?.58:.44,w=dark?255:0,mix=c=>Math.round(c*k+w*(1-k));
+  const rs=document.documentElement.style;
+  rs.setProperty("--acc",`rgb(${mix(r)},${mix(g)},${mix(b)})`);
+  rs.setProperty("--acc-soft",`rgba(${r},${g},${b},${dark?.10:.09})`);
+  $("tick").style.left=`calc(${Math.max(0,Math.min(100,(nm-250)/6.5))}% - 1.5px)`;
+  $("wlLab").textContent=nm.toFixed(1)+" nm"+(nm<380?"  UV":nm>780?"  IR":"");
+}
+const buildEl=()=>$("el").innerHTML=DB.map((d,i)=>
+  `<option value="${i}">${d.el} \u00B7 ${d.name}${d.J===0?"":"  (J = 1/2)"}</option>`).join("");
+const buildTr=()=>{const d=DB[+$("el").value];
+  $("tr").innerHTML=d.tr.map((t,i)=>
+    `<option value="${i}">${t.n} \u00B7 ${lamVac(t).toFixed(1)} nm</option>`).join("");};
+const buildIso=()=>{const d=DB[+$("el").value];
+  $("iso").innerHTML=d.iso.map((s,i)=>
+    `<option value="${i}">${s.a}${d.el} \u00B7 I = ${half(s.I)} \u00B7 ${s.ab}</option>`).join("");};
+function loadDB(){
+  const d=DB[+$("el").value],t=d.tr[+$("tr").value];
+  $("gam").value=t.gam;
+  $("dman").value=dFromGamma(t.gam,lamVac(t),t.Jp).toFixed(4);
+  MODE="G";syncMode();
+}
+function syncMode(){
+  $("mG").setAttribute("aria-pressed",MODE==="G");
+  $("mD").setAttribute("aria-pressed",MODE==="D");
+  $("gam").readOnly=MODE!=="G";
+  $("dman").readOnly=MODE!=="D";
+  $("gam").style.opacity=MODE==="G"?1:.55;
+  $("dman").style.opacity=MODE==="D"?1:.55;
+}
+
+let CURKEY=null;
+function renderChangelog(){
+  $("chlog").innerHTML=CHANGELOG.map(c=>
+    `<div class="chl"><h3>v${c.v} \u00B7 ${c.date} \u00B7 ${c.by}</h3>
+     <ul>${c.chg.map(x=>`<li>${x}</li>`).join("")}</ul>
+     ${c.note?`<p class="rem"><b>备注</b>　${c.note}</p>`:""}</div>`).join("");
+}
+function refreshNoteInfo(){
+  const n=Object.values(NOTES).filter(v=>v&&v.trim()).length;
+  $("noteInfo").textContent=(n?`已填 ${n} 条备注。`:"")
+    +"备注保存在本页内存中，会随 CSV 与 JSON 导出一起写出。本页不使用浏览器存储（在部分预览环境中不可用），刷新即丢失，请导出留存。";
+}
+function syncNote(d,t,s){
+  const k=noteKey(d,t,s);
+  if(CURKEY!==k){CURKEY=k;$("note").value=NOTES[k]||"";}
+  const st=chkStatus(t),b=$("chkBadge");
+  b.textContent=st.s;
+  b.className="badge"+(st.ok?"":" warn2");
+  refreshNoteInfo();
+}
+$("note").oninput=()=>{if(CURKEY!==null){NOTES[CURKEY]=$("note").value;refreshNoteInfo();}};
+
+function compute(){
+  const d=DB[+$("el").value],t=d.tr[+$("tr").value],s=d.iso[+$("iso").value];
+  const I=s.I,J=d.J,Jp=t.Jp,lam=lamVac(t);
+  syncNote(d,t,s);
+  let gam,dRM;
+  if(MODE==="G"){gam=parseFloat($("gam").value);dRM=dFromGamma(gam,lam,Jp);
+    if(isFinite(dRM))$("dman").value=dRM.toFixed(4);}
+  else{dRM=parseFloat($("dman").value);gam=gammaFromD(dRM,lam,Jp);
+    if(isFinite(gam))$("gam").value=Number(gam.toPrecision(6));}
+  setAccent(lam);
+
+  $("lockBox").innerHTML=[["核自旋 I",half(I)],["基态 J",half(J)],
+    ["激发态 J\u2032",half(Jp)],["波长 \u03BB",lam.toFixed(3)+" nm"]]
+    .map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("");
+  $("info").innerHTML=[
+    ["元素",`${d.el} \u00B7 ${d.name} \u00B7 Z = ${d.Z}`],
+    ["同位素",`${s.a}${d.el} \u00B7 丰度 ${s.ab}`],
+    ["基态组态",`${d.gcfg}   F = ${frange(J,I).map(half).join(", ")}`],
+    ["基态超精细劈裂",s.hfs],
+    ["激发态组态",`${t.ecfg}   F\u2032 = ${frange(Jp,I).map(half).join(", ")}`],
+    ["跃迁",t.n],
+    ["波长（真空）",`${lam.toFixed(4)} nm` +
+      (t.ek!==undefined?`　\u2190 由 E_k = ${t.ek} cm\u207B\u00B9 导出`:"　\u2190 绝对频率测量值")],
+    ["波长（空气）",`${(lam/nAir(lam)).toFixed(4)} nm　n = ${nAir(lam).toFixed(8)}（仅供对照，勿用于计算）`],
+    ["\u0393/2\u03C0",`${fmtHz(t.gam)}　${t.gu}`],
+    ["出处",t.src],
+  ].map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("");
+  $("dbwarn").innerHTML="数据库只存 <b>E_k</b>（或高精度真空波长）与 <b>\u0393</b>，真空波长一律由能级导出，因此不会混入空气波长。"
+    +"不存储任何文献 <b>d</b> 值 \u2014\u2014 d 一律由 \u0393 反解，保证与本页 Edmonds 约定自洽。"
+    +"<br><br>注意：文献里的约化矩阵元可能用 CG 归一化（如 Steck 数据表），与本页相差 <b>\u221A(2J+1)</b>。"
+    +"J = 0 的碱土原子该因子为 1（两约定相同）；J = 1/2 的碱金属为 \u221A2。"
+    +"例：Steck 给 \u2078\u2077Rb D2 的 \u27E8J\u2016er\u2016J\u2032\u27E9 = 4.227 ea\u2080，本页对应 \u221A2\u00D74.227 = 5.978 ea\u2080，"
+    +"但两者算出的循环跃迁矩阵元同为 2.989 ea\u2080。";
+
+  if(!isFinite(dRM)){$("dVal").textContent="\u2014";
+    $("dForm").textContent="";$("dNote").textContent="请输入有效的 \u0393 或 d。";
+    $("tA").innerHTML="";$("tB").innerHTML="";$("checks").innerHTML="";$("audit").innerHTML="";return;}
+
+  $("dVal").textContent=`\u27E8J\u2032\u2016d\u2016J\u27E9 = ${dRM.toFixed(4)} a.u.`;
+  const _d=D("d","精细结构约化矩阵元 ⟨J′‖d‖J⟩。全部动力学信息集中于此，需由实验或多体计算给出。本页其余每个数值都是它乘上一个纯角动量系数。");
+  const _Jp1=D("(2J′+1)","上能级简并度。出现在这里是因为同一个上能级子能级把跃迁强度分摊给多条下行通道。它也正是 Edmonds 与 CG 两套约定分歧的根源（两者相差 √(2J+1)）。");
+  const _G=D("Γ","上能级自发衰减率，即爱因斯坦 A 系数，数值上等于自然线宽（角频率）。左侧输入框填的是 Γ/2π（Hz），即文献常引的 FWHM。");
+  const _a3=D("α³","精细结构常数的三次方，α = 1/137.036，α³ ≈ 3.89×10⁻⁷。它说明电偶极辐射本质上是 O(α³) 的弱效应——这就是原子单位下自发辐射率总是极小数（本例 ~10⁻¹¹）的原因。");
+  const _w3=D("ω³","跃迁角频率的三次方（原子单位）。ω³ 来自自发辐射的光子态密度 ∝ ω³，即同样的矩阵元在越短波长下衰减越快。");
+  const _w=D("ω","跃迁角频率（原子单位）。由频率除以 E_h/h 得到。");
+  const _cl=D("(c/λ)","跃迁频率。λ 必须是真空波长——误用空气波长会引入约 290 ppm 误差，传到 d 上约 440 ppm。");
+  const _Eh=D("(E_h/h)","6.579683920502×10¹⁵ Hz，哈特里能量的频率当量。用它把 Hz 换算成原子单位。");
+  const _n34=D("3","数值因子，来自把自发辐射公式 Γ = (4/3)α³ω³d²/(2J′+1) 反解时的 3/4。");
+  const _n4=D("4","同上，来自 (4/3)α³ 中的 4。");
+  if(MODE==="G"){
+    $("dForm").innerHTML=`${_d} = √[ ${_n34}${_Jp1}${_G} / (${_n4}${_a3}${_w3}) ]`
+      +`　　${_w} = ${_cl}/${_Eh} = ${omAU(lam).toFixed(6)}`;
+    $("dNote").textContent="由线宽反解，必然与本页 Edmonds 约定自洽。这是推荐的输入方式：Γ 是可直接测量的物理量，不带约定。";
+  }else{
+    const f=Math.sqrt((2*Jp+1)/(2*J+1));
+    $("dForm").innerHTML=`${_G}/2π = (${_n4}/${_n34})${_a3}${_w3} ${_d}²/${_Jp1} = <b>${fmtHz(gam)}</b>`
+      +`　　← 由手动 ${_d} 正推`;
+    $("dNote").textContent=`约定自检：上式给出 ${fmtHz(gam)}，数据库线宽为 ${fmtHz(t.gam)}。若两者之比接近 ${(f*f).toFixed(4)}（即 d 相差 \u221A((2J\u2032+1)/(2J+1)) = ${f.toFixed(4)}），说明你的 d 来自 CG 归一化约定，需先乘以该因子再填。`;
+  }
+
+  const Fs=frange(J,I),Fps=frange(Jp,I);
+  const A=[];
+  for(const F of Fs)for(const Fp of Fps){
+    const c=redHFS(I,J,Jp,F,Fp);
+    if(Math.abs(c)>1e-11)A.push({F,Fp,c});
+  }
+  $("tA").innerHTML=A.map(r=>`<tr><td>${half(r.F)}</td><td>${half(r.Fp)}</td>
+    <td class="num">${pretty(r.c)}</td><td class="num">${(r.c*dRM).toFixed(6)}</td>
+    <td class="num">${(r.c*r.c).toFixed(4)}</td></tr>`).join("");
+
+  const chan=new Map(),Z=[];
+  for(const F of Fs)for(let m=-F;m<=F+1e-9;m++)for(const Fp of Fps)for(const q of[-1,0,1]){
+    const mp=m+q;if(Math.abs(mp)>Fp+1e-9)continue;
+    const v=zee(I,J,Jp,F,m,Fp,mp,q);if(Math.abs(v)<1e-11)continue;
+    const key=Fp+":"+mp;chan.set(key,(chan.get(key)||0)+1);
+    Z.push({F,m,Fp,mp,q,v});
+  }
+  for(const z of Z)z.cyc=chan.get(z.Fp+":"+z.mp)===1;
+  ST={I,J,Jp,Fs,Fps,dRM,Z,A,lam,gam,d,t,s};
+
+  const cF=$("fF").value,cFp=$("fFp").value;
+  const opt=(a,cur)=>`<option value="">全部</option>`+a.map(v=>
+    `<option value="${v}"${String(v)===cur?" selected":""}>${half(v)}</option>`).join("");
+  $("fF").innerHTML=opt(Fs,cF);$("fFp").innerHTML=opt(Fps,cFp);
+  $("nz").textContent=Z.length+" 条";
+  renderZ();renderChecks();
+}
+function renderZ(){
+  const{Z,dRM}=ST;
+  const fF=$("fF").value,fFp=$("fFp").value,fQ=$("fQ").value,fC=$("fCyc").checked;
+  const sel=Z.map((z,i)=>({z,i})).filter(({z})=>
+    (fF===""||Math.abs(z.F-parseFloat(fF))<1e-9)&&
+    (fFp===""||Math.abs(z.Fp-parseFloat(fFp))<1e-9)&&
+    (fQ===""||z.q===parseInt(fQ))&&(!fC||z.cyc));
+  $("tB").innerHTML=sel.map(({z,i})=>
+    `<tr class="z" tabindex="0" data-i="${i}">
+      <td>|${half(z.F)},${sh(z.m)}\u27E9</td><td>${pol(z.q)}</td>
+      <td>|${half(z.Fp)},${sh(z.mp)}\u27E9</td>
+      <td class="num">${pretty(z.v)}</td>
+      <td class="num">${(z.v*dRM).toFixed(6)}</td>
+      <td>${z.cyc?'<span class="badge cy">循环</span>':""}</td></tr>`).join("")
+    ||`<tr><td colspan="6" style="color:var(--muted)">当前筛选下没有分量，试试放宽条件。</td></tr>`;
+  $("tbNote").textContent=`显示 ${sel.length} / 共 ${Z.length} 条 \u00B7 点击任一行展开逐因子推导。`;
+}
+function auditTable(title,head,rows){
+  return `<p class="note">${title}</p><table><thead><tr><th>${head}</th>
+    <th>${D("逐项","被求和的每一个 |矩阵元系数|²，以 ⟨J′‖d‖J⟩ 为单位 1。这些是精确有理数，不带不确定度。")}</th>
+    <th class="num">${D("小计","逐项之和。")}</th>
+    <th class="num">${D("理论值","由 3j/6j 正交性给出的解析值。正交性本质是不可约表示的完备性。")}</th>
+    <th class="num">${D("残差","小计减理论值。应在 10⁻¹⁵ 量级，即 IEEE 双精度极限。若出现 10⁻³ 或更大，说明约定混用或实现有误——这正是可复核的证据链。")}</th>
+    </tr></thead><tbody>${rows.join("")}</tbody></table>`;
+}
+function renderChecks(){
+  const{I,J,Jp,Fs,Fps}=ST;
+  const ck=[],aud=[];
+  let r1=true;const R1=[];
+  for(const F of Fs){
+    let sum=0;const t=[];
+    for(const Fp of Fps){const c=redHFS(I,J,Jp,F,Fp);sum+=c*c;
+      if(Math.abs(c)>1e-11)t.push(`F\u2032=${half(Fp)}: ${(c*c).toFixed(6)}`);}
+    const tgt=(2*F+1)/(2*J+1);if(Math.abs(sum-tgt)>1e-8)r1=false;
+    R1.push(`<tr><td>F = ${half(F)}</td><td>${t.join("  +  ")}</td>
+      <td class="num">${sum.toFixed(8)}</td><td class="num">${tgt.toFixed(8)}</td>
+      <td class="num">${(sum-tgt).toExponential(1)}</td></tr>`);
+  }
+  ck.push(["R1",r1]);
+  aud.push(auditTable("R1 \u00B7 \u03A3<sub>F\u2032</sub>|\u27E8F\u2032\u2016d\u2016F\u27E9|\u00B2 = (2F+1)/(2J+1)　\u2014\u2014 超精细分解不丢强度","基态",R1));
+
+  let r2=true;const R2=[];
+  for(const Fp of Fps)for(let mp=-Fp;mp<=Fp+1e-9;mp++){
+    let sum=0;const t=[];
+    for(const F of Fs)for(const q of[-1,0,1]){const m=mp-q;if(Math.abs(m)>F+1e-9)continue;
+      const v=zee(I,J,Jp,F,m,Fp,mp,q);sum+=v*v;
+      if(Math.abs(v)>1e-11)t.push(`${pol(q)}\u2190|${half(F)},${sh(m)}\u27E9: ${(v*v).toFixed(6)}`);}
+    const tgt=1/(2*Jp+1);if(Math.abs(sum-tgt)>1e-8)r2=false;
+    R2.push(`<tr><td>|${half(Fp)},${sh(mp)}\u27E9</td><td>${t.join("  +  ")}</td>
+      <td class="num">${sum.toFixed(8)}</td><td class="num">${tgt.toFixed(8)}</td>
+      <td class="num">${(sum-tgt).toExponential(1)}</td></tr>`);
+  }
+  ck.push(["R2",r2]);
+  aud.push(auditTable("R2 \u00B7 \u03A3<sub>F,m,q</sub>|\u27E8Fm|d<sub>q</sub>|F\u2032m\u2032\u27E9|\u00B2 = 1/(2J\u2032+1)　\u2014\u2014 与 F\u2032, m\u2032 无关，故各超精细能级线宽相同。约定混用时最先在这里暴露。","激发态",R2));
+
+  let r3=true;const R3=[];
+  for(const F of Fs)for(let m=-F;m<=F+1e-9;m++){
+    let sum=0;const t=[];
+    for(const Fp of Fps)for(const q of[-1,0,1]){const mp=m+q;if(Math.abs(mp)>Fp+1e-9)continue;
+      const v=zee(I,J,Jp,F,m,Fp,mp,q);sum+=v*v;
+      if(Math.abs(v)>1e-11)t.push(`${pol(q)}\u2192|${half(Fp)},${sh(mp)}\u27E9: ${(v*v).toFixed(6)}`);}
+    const tgt=1/(2*J+1);if(Math.abs(sum-tgt)>1e-8)r3=false;
+    R3.push(`<tr><td>|${half(F)},${sh(m)}\u27E9</td><td>${t.join("  +  ")}</td>
+      <td class="num">${sum.toFixed(8)}</td><td class="num">${tgt.toFixed(8)}</td>
+      <td class="num">${(sum-tgt).toExponential(1)}</td></tr>`);
+  }
+  ck.push(["R3",r3]);
+  aud.push(auditTable("R3 \u00B7 \u03A3<sub>F\u2032,m\u2032,q</sub>|\u27E8F\u2032m\u2032|d<sub>q</sub>|Fm\u27E9|\u00B2 = 1/(2J+1)　\u2014\u2014 与 F, m 无关，故非极化样品吸收各向同性","基态",R3));
+
+  $("checks").innerHTML=ck.map(([n,ok])=>
+    `<span class="chk"><span class="dot ${ok?"g":"r"}"></span>${n} ${ok?"通过":"未通过"}</span>`).join("");
+  $("audit").innerHTML=aud.join("");
+  $("exNote").textContent=`当前：${ST.s.a}${ST.d.el} ${ST.t.n}，${ST.Z.length} 个塞曼分量，${ST.A.length} 个超精细约化矩阵元。`;
+}
+function wig(br,a,b){
+  const o=br==="{"?"{":"(",c=br==="{"?"}":")";
+  return `<span class="wig"><span class="br">${o}</span><span class="m">`
+    +a.map(x=>`<span>${x}</span>`).join("")+b.map(x=>`<span>${x}</span>`).join("")
+    +`</span><span class="br">${c}</span></span>`;
+}
+function detail(z){
+  const{I,J,Jp,dRM}=ST;
+  const ph1=sgn(Jp+I+z.F+1),rt=Math.sqrt((2*z.F+1)*(2*z.Fp+1));
+  const s6=sixj(I,J,Jp,z.F,z.Fp),red=redHFS(I,J,Jp,z.F,z.Fp);
+  const ph2=sgn(z.Fp-z.mp),t3=w3j(z.Fp,1,z.F,-z.mp,z.q,z.m);
+  const P1=D("(−1)<sup>J′+I+F+1</sup>","相因子。来自 CG→3j 转换与 3j 列交换约定的累积，本身不含物理内容，但决定不同 F′ 通道之间的相对符号——涉及干涉（如多通路拉曼）时必须保留。");
+  const RT=D("√[(2F+1)(2F′+1)]","简并度因子。推导中两次把 Clebsch-Gordan 系数转成 3j 符号，各贡献一个 √(2F+1)。");
+  const SJ=D("6j 符号","Wigner 6j 符号。凡是「两个角动量耦合成总角动量、而算符只作用于其中之一」的问题，答案都是一个 6j。这里电偶极算符只作用于电子，核自旋 I 是旁观者——这就是 6j 出现的全部原因。");
+  const RF=D("⟨F′‖d‖F⟩","超精细约化矩阵元。已剥离全部磁量子数依赖，只依赖 F 与 F′。它对同一 (F,F′) 下的所有塞曼分量是公用的。");
+  const P2=D("(−1)<sup>F′−m′</sup>","相因子，来自 Edmonds 约定下 Wigner-Eckart 定理的写法。");
+  const TJ=D("3j 符号","Wigner 3j 符号。第二行之和必须为零，这直接给出选择定则 m′ = m + q（绕 z 轴转动不变 ⇒ 磁量子数守恒）；三角不等式则给出 ΔF = 0, ±1 且 F=F′=0 禁戒。选择定则不是外加假设，而是 3j 的内蕴性质。");
+  const SR=D("选择定则","3j 符号非零的必要条件。若这一行不等于 0，该分量恒为零——上一步的两个「缺口」（Δm = ±2）正是如此产生的。");
+  return `<div class="step">
+  <b>第一步 · ${SJ} → ${RF}</b><br>
+  ${P1} = <b>${ph1>0?"+1":"\u2212"+1}</b> \u00B7
+  ${RT} = <b>${pretty(rt)}</b> \u00B7
+  ${wig("{",["J\u2032","F\u2032","I"],["F","J","1"])} =
+  ${wig("{",[half(Jp),half(z.Fp),half(I)],[half(z.F),half(J),"1"])} = <b>${pretty(s6)}</b><br>
+  \u21D2 ${RF} = <b>${pretty(red)}</b> \u00D7 \u27E8J\u2032\u2016d\u2016J\u27E9 = <b>${(red*dRM).toFixed(6)}</b> a.u.<br><br>
+  <b>第二步 · ${TJ} → 塞曼分量</b><br>
+  ${P2} = <b>${ph2>0?"+1":"\u2212"+1}</b> \u00B7
+  ${wig("(",["F\u2032","1","F"],["\u2212m\u2032","q","m"])} =
+  ${wig("(",[half(z.Fp),"1",half(z.F)],[sh(-z.mp),(z.q>0?"+1":z.q<0?"\u22121":"0"),sh(z.m)])}
+  = <b>${pretty(t3)}</b><br>
+  ${SR}：\u2212m\u2032 + q + m = ${sh(-z.mp)} ${z.q>=0?"+":"\u2212"} ${Math.abs(z.q)} ${z.m>=0?"+":"\u2212"} ${half(Math.abs(z.m))} = <b>0</b> \u2713<br>
+  \u21D2 <b>\u27E8F\u2032m\u2032|d<sub>q</sub>|Fm\u27E9 = ${pretty(z.v)} \u00D7 ${dRM.toFixed(4)} = ${(z.v*dRM).toFixed(6)} a.u.</b>
+  ${z.cyc?`<br><br><b>${D("循环跃迁","该激发态子能级只有一条衰变通道，散射光子后原子必然回到原态，因此可反复散射。这是荧光成像与态选择读出的物理基础。D1 线（J′=1/2）不存在 stretched 态，因此没有循环跃迁——这正是 D1 做不了循环荧光成像的原因。")}</b>：|${half(z.Fp)},${sh(z.mp)}\u27E9 只有这一条衰变通道，散射后必然回到 |${half(z.F)},${sh(z.m)}\u27E9。`:""}
+  </div>`;
+}
+function toggle(tr){
+  const nx=tr.nextElementSibling;
+  if(nx&&nx.classList.contains("det")){nx.remove();return;}
+  document.querySelectorAll("tr.det").forEach(n=>n.remove());
+  const row=document.createElement("tr");row.className="det";
+  row.innerHTML=`<td colspan="6">${detail(ST.Z[+tr.dataset.i])}</td>`;
+  tr.after(row);
+}
+$("tB").addEventListener("click",e=>{const tr=e.target.closest("tr.z");if(tr)toggle(tr);});
+$("tB").addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  const tr=e.target.closest("tr.z");if(!tr)return;e.preventDefault();toggle(tr);});
+$("csv").onclick=()=>{
+  const{Z,dRM,d,t,s,lam,gam}=ST;
+  const nt=(NOTES[noteKey(d,t,s)]||"").replace(/\r?\n/g," / ");
+  const L=[
+   `# ${s.a}${d.el}  ${t.n}`,
+   `# lambda_vac = ${lam.toFixed(6)} nm${t.ek!==undefined?"  (from E_k = "+t.ek+" cm^-1)":"  (measured)"}`,
+   `# Gamma/2pi = ${gam.toPrecision(8)} Hz   ${t.gu}`,
+   `# <J'||d||J> = ${dRM.toFixed(6)} a.u.   convention: Edmonds (3j)`,
+   `# source     = ${t.src}`,
+   `# status     = ${chkStatus(t).s}`,
+   `# remark     = ${nt||"(none)"}`,
+   `# tool       = hfs-matrix-element-calculator v${CHANGELOG[0].v} (${CHANGELOG[0].date})`,
+   "F,m,q,Fp,mp,coefficient,value_au,cycling"];
+  for(const z of Z)L.push([half(z.F),half(z.m),z.q,half(z.Fp),half(z.mp),
+    z.v.toFixed(9),(z.v*dRM).toFixed(9),z.cyc?1:0].join(","));
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([L.join("\n")],{type:"text/csv;charset=utf-8"}));
+  a.download=`${s.a}${d.el}_${t.n.split(" ")[0]}_matrix_elements.csv`;a.click();
+};
+$("json").onclick=()=>{
+  const out={tool:"hfs-matrix-element-calculator",version:CHANGELOG[0].v,
+    exported:new Date().toISOString().slice(0,10),convention:"Edmonds (3j)",
+    changelog:CHANGELOG,
+    database:DB.map(d=>({el:d.el,name:d.name,Z:d.Z,J:d.J,gcfg:d.gcfg,iso:d.iso,
+      tr:d.tr.map(t=>({n:t.n,Jp:t.Jp,ek:t.ek,lam_vac_nm:+lamVac(t).toFixed(6),
+        gamma_2pi_Hz:t.gam,uncertainty:t.gu,source:t.src,status:chkStatus(t).s,
+        d_reduced_au:+dFromGamma(t.gam,lamVac(t),t.Jp).toFixed(6),ecfg:t.ecfg,
+        remarks:d.iso.reduce((o,s)=>{const v=NOTES[noteKey(d,t,s)];
+          if(v&&v.trim())o[s.a+d.el]=v;return o;},{})}))}))};
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:"application/json"}));
+  a.download=`hfs_database_v${CHANGELOG[0].v}.json`;a.click();
+  $("exNote").textContent="已导出完整数据库（含更新记录与全部备注）。可作为下一版的数据源，实现数据与代码分离。";
+};
+$("tex").onclick=async()=>{
+  const{Z,dRM}=ST;
+  const L=["\\begin{tabular}{ll l r r}","\\hline",
+    "$F,m$ & pol. & $F',m'$ & coeff. & value (a.u.) \\\\","\\hline"];
+  for(const z of Z)L.push(`$${half(z.F)},${half(z.m)}$ & $${z.q>0?"\\sigma^+":z.q<0?"\\sigma^-":"\\pi"}$ & `
+    +`$${half(z.Fp)},${half(z.mp)}$ & $${z.v.toFixed(6)}$ & $${(z.v*dRM).toFixed(6)}$ \\\\`);
+  L.push("\\hline","\\end{tabular}");
+  try{await navigator.clipboard.writeText(L.join("\n"));$("exNote").textContent="LaTeX 表格已复制到剪贴板。";}
+  catch(e){$("exNote").textContent="剪贴板不可用，请改用 CSV 下载。";}
+};
+$("run").onclick=()=>{
+  const L=[];let pass=0,fail=0;
+  const chk=(ok,msg)=>{ok?pass++:fail++;L.push((ok?"  \u2713  ":"  \u2717  ")+msg);};
+  const near=(a,b,t=1e-9)=>Math.abs(a-b)<t;
+  L.push("[1] 已知解析值比对（独立于本文件的 sympy 计算）");
+  chk(near(redHFS(.5,0,1,.5,.5),-Math.sqrt(6)/3),"\u00B9\u2077\u00B9Yb  \u27E8F\u2032=1/2\u2016d\u20161/2\u27E9 = \u2212\u221A6/3");
+  chk(near(redHFS(.5,0,1,.5,1.5),2*Math.sqrt(3)/3),"\u00B9\u2077\u00B9Yb  \u27E8F\u2032=3/2\u2016d\u20161/2\u27E9 = 2\u221A3/3");
+  chk(near(redHFS(2.5,0,1,2.5,2.5),-Math.sqrt(2)),"\u00B9\u2077\u00B3Yb  \u27E8F\u2032=5/2\u2016d\u20165/2\u27E9 = \u2212\u221A2");
+  chk(near(redHFS(1.5,.5,1.5,2,3),Math.sqrt(7)/2),"\u2078\u2077Rb D2  \u27E8F\u2032=3\u2016d\u20162\u27E9 = \u221A7/2");
+  chk(near(redHFS(3.5,.5,.5,3,4),Math.sqrt(42)/4),"\u00B9\u00B3\u00B3Cs D1  \u27E8F\u2032=4\u2016d\u20163\u27E9 = \u221A42/4");
+  chk(near(zee(.5,0,1,.5,.5,1.5,1.5,1),Math.sqrt(3)/3),"\u00B9\u2077\u00B9Yb  stretched \u03C3\u207A 系数 = \u221A3/3");
+  chk(near(zee(1.5,.5,1.5,2,2,3,3,1),.5),"\u2078\u2077Rb D2  循环跃迁系数 = 1/2");
+  L.push("\n[2] 与 Steck 数据表交叉验证（不同归一化，同一物理量）");
+  const rb=DB.find(x=>x.el==="Rb").tr[0],dRb=dFromGamma(rb.gam,lamVac(rb),rb.Jp);
+  chk(near(dRb,Math.SQRT2*4.227,2e-3),
+    `\u2078\u2077Rb D2  d_Edmonds = ${dRb.toFixed(4)}  vs  \u221A2\u00D74.227 = ${(Math.SQRT2*4.227).toFixed(4)}`);
+  chk(near(.5*dRb,2.989,3e-3),
+    `\u2078\u2077Rb D2  循环跃迁 = ${(.5*dRb).toFixed(4)} ea\u2080  vs  Steck 表7 = 2.989(3)`);
+  chk(near(lamVac(rb)/nAir(lamVac(rb)),780.032,1e-3),
+    `\u2078\u2077Rb D2  空气波长 = ${(lamVac(rb)/nAir(lamVac(rb))).toFixed(4)}  vs  Steck = 780.0320`);
+  L.push("\n[3] 全库求和规则扫描");
+  let n=0,bad=0,worst=0,worstTag="";
+  for(const d of DB)for(const s of d.iso)for(const t of d.tr){
+    const I=s.I,J=d.J,Jp=t.Jp,Fs=frange(J,I),Fps=frange(Jp,I);n++;
+    const rec=(r,tag)=>{if(r>worst){worst=r;worstTag=tag;}if(r>1e-8)bad++;};
+    for(const F of Fs){let x=0;for(const Fp of Fps)x+=redHFS(I,J,Jp,F,Fp)**2;
+      rec(Math.abs(x-(2*F+1)/(2*J+1)),`R1 ${s.a}${d.el}`);}
+    for(const Fp of Fps)for(let mp=-Fp;mp<=Fp+1e-9;mp++){let x=0;
+      for(const F of Fs)for(const q of[-1,0,1]){const m=mp-q;
+        if(Math.abs(m)<=F+1e-9)x+=zee(I,J,Jp,F,m,Fp,mp,q)**2;}
+      rec(Math.abs(x-1/(2*Jp+1)),`R2 ${s.a}${d.el}`);}
+    for(const F of Fs)for(let m=-F;m<=F+1e-9;m++){let x=0;
+      for(const Fp of Fps)for(const q of[-1,0,1]){const mp=m+q;
+        if(Math.abs(mp)<=Fp+1e-9)x+=zee(I,J,Jp,F,m,Fp,mp,q)**2;}
+      rec(Math.abs(x-1/(2*J+1)),`R3 ${s.a}${d.el}`);}
+  }
+  chk(bad===0,`扫描 ${n} 个（元素\u00D7同位素\u00D7跃迁）组合，R1/R2/R3 违规 ${bad} 项`);
+  L.push(`     最大残差 ${worst.toExponential(2)}（${worstTag}），双精度极限约 1e-15`);
+  L.push(`\n结果：${fail?"\u2717 "+fail+" 项失败 \u2014\u2014 请勿信任本文件的输出":"\u2713 全部 "+pass+" 项通过"}`);
+  $("stOut").hidden=false;
+  $("stOut").textContent=L.join("\n");
+  $("stOut").style.borderLeftColor=fail?"var(--bad)":"var(--ok)";
+};
+$("el").onchange=()=>{buildTr();buildIso();$("fF").value="";$("fFp").value="";loadDB();compute();};
+$("tr").onchange=()=>{$("fFp").value="";loadDB();compute();};
+$("iso").onchange=()=>{$("fF").value="";$("fFp").value="";loadDB();compute();};
+$("reset").onclick=()=>{loadDB();compute();};
+$("mG").onclick=()=>{MODE="G";syncMode();compute();};
+$("mD").onclick=()=>{MODE="D";syncMode();compute();};
+$("gam").oninput=()=>{if(MODE==="G")compute();};
+$("dman").oninput=()=>{if(MODE==="D")compute();};
+for(const id of["fF","fFp","fQ","fCyc"])$(id).onchange=renderZ;
+matchMedia("(prefers-color-scheme:dark)").addEventListener("change",compute);
+renderChangelog();buildEl();buildTr();buildIso();loadDB();compute();
+</script>
+</body>
+</html>

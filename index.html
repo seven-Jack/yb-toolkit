@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>¹⁷¹Yb 计算工具集</title>
+<link rel="stylesheet" href="shared/style.css">
+</head>
+<body class="app">
+
+<div class="topbar">
+  <span class="brand">¹⁷¹Yb 工具集</span>
+  <a href="#" id="btn-share">复制链接</a>
+  <a href="#" id="btn-reset">重置参数</a>
+  <a href="#" id="btn-undo">撤销</a>
+  <a href="tools/rabi-power.html">完整版工具 ↗</a>
+  <span class="sp"></span>
+  <span class="stamp" id="buildstamp"></span>
+</div>
+
+<div class="globalbar" id="gbar"></div>
+
+<div id="panes">
+  <section class="pane" id="pane-top">
+    <div class="pane-head">
+      <select id="sel-top"></select>
+      <span class="ph-note" id="note-top"></span>
+    </div>
+    <div class="pane-body" id="host-top"></div>
+  </section>
+  <div id="splitbar" title="拖动调整；双击复位"></div>
+  <section class="pane" id="pane-bot">
+    <div class="pane-head">
+      <select id="sel-bot"></select>
+      <span class="ph-note" id="note-bot"></span>
+    </div>
+    <div class="pane-body" id="host-bot"></div>
+  </section>
+</div>
+
+<script src="shared/wigner.js"></script>
+<script src="shared/constants.js"></script>
+<script src="shared/physics.js"></script>
+<script src="shared/units.js"></script>
+<script src="shared/urlstate.js"></script>
+<script src="shared/plot.js"></script>
+<script src="shared/version.js"></script>
+<script src="shell/store.js"></script>
+<script src="shell/registry.js"></script>
+<script src="shell/panes.js"></script>
+<script src="modules/hfs-matrix-element.js"></script>
+<script src="modules/rabi-power.js"></script>
+<script src="modules/raman-qubit.js"></script>
+<script>
+(function () {
+  'use strict';
+  YBP.readTheme();
+  YBV.render('buildstamp');
+  YBPanes.restoreStore();
+  YBPanes.init({ defaultTop: 'rabi-power', defaultBot: 'raman-qubit' });
+
+  /* 顶部全局摘要：跨模块共享的量一眼可见 */
+  function gbar() {
+    var s = YBStore.state, D = YBStore.derived;
+    document.getElementById('gbar').innerHTML =
+      '当前跃迁 <b>' + s.transition.label + '</b>' +
+      '　λ <b>' + D.lambda_nm().toFixed(4) + ' nm</b>' +
+      '　Γ/2π <b>' + (s.transition.Gamma_Hz / 1e3).toPrecision(4) + ' kHz</b>' +
+      '　d_red <b>' + D.d_red_au().toFixed(6) + ' e·a₀</b>' +
+      '　束腰 <b>' + YBU.auto('length', D.wg()) + '</b>' +
+      '　功率 <b>' + YBU.auto('power', s.beam.P_laser) + '</b>' +
+      '　到达原子 <b>' + YBU.auto('power', D.P_atom()) + '</b>';
+  }
+  YBStore.subscribe('__shell__', ['transition.*', 'beam.*'], function () {
+    gbar(); YBPanes.writeURL();
+  });
+  gbar();
+
+  document.getElementById('btn-share').onclick = function (e) {
+    e.preventDefault(); YBPanes.writeURL();
+    YBURL.copyLink().then(function (ok) {
+      var a = e.target, old = a.textContent;
+      a.textContent = ok ? '已复制' : '复制失败';
+      setTimeout(function () { a.textContent = old; }, 1400);
+    });
+  };
+  document.getElementById('btn-reset').onclick = function (e) {
+    e.preventDefault(); YBStore.reset();
+    YBM.instances.forEach(function (i) { if (i.api.update) i.api.update([], null); });
+    gbar(); YBPanes.writeURL();
+  };
+  document.getElementById('btn-undo').onclick = function (e) {
+    e.preventDefault();
+    if (!YBStore.undo()) { var a = e.target, o = a.textContent;
+      a.textContent = '无可撤销'; setTimeout(function () { a.textContent = o; }, 1200); }
+  };
+  window.addEventListener('matchMedia' in window ? 'x' : 'x', function(){});
+  if (window.matchMedia) try {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+      YBP.readTheme();
+      YBM.instances.forEach(function (i) { if (i.api.update) i.api.update([], null); });
+    });
+  } catch (e) {}
+})();
+</script>
+</body></html>

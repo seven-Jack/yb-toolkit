@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>171Yb 拉曼跃迁计算器 v4</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+:root{
+  --bg:#faf9f7; --card:#ffffff; --soft:#f2f0eb;
+  --fg:#26241f; --fg2:#6b675e; --line:#e0ddd5;
+  --accent:#185fa5; --accent-bg:#e6f1fb;
+  --warn:#854f0b; --warn-bg:#faeeda;
+  --ok:#3b6d11; --ok-bg:#eaf3de;
+  --bad:#a32020; --bad-bg:#fbe8e8;
+  --grid:#d8d5cd; --p32:#185fa5; --p12:#993c1d;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1a1917; --card:#242320; --soft:#2e2c28;
+    --fg:#e8e6e0; --fg2:#a3a096; --line:#3d3a34;
+    --accent:#85b7eb; --accent-bg:#0c447c;
+    --warn:#fac775; --warn-bg:#633806;
+    --ok:#c0dd97; --ok-bg:#27500a;
+    --bad:#f0a0a0; --bad-bg:#5c1414;
+    --grid:#454239; --p32:#85b7eb; --p12:#f0997b;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;padding:1.6rem 1rem 3rem;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:20px;font-weight:500;margin:0 0 4px}
+h2{font-size:13px;font-weight:500;margin:24px 0 10px;color:var(--fg2);
+  letter-spacing:.06em;text-transform:uppercase}
+.sub{font-size:13px;color:var(--fg2);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:0 0 14px}
+.lbl{font-size:12px;color:var(--fg2);margin:0 0 5px}
+
+/* result bar */
+.res{background:var(--card);border:1px solid var(--accent);border-radius:12px;
+  padding:16px 20px;margin:0 0 16px;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
+.res .k{font-size:11px;color:var(--fg2);margin:0 0 2px;letter-spacing:.04em}
+.res .v{font-size:24px;font-weight:500;margin:0;font-family:ui-monospace,Menlo,monospace;line-height:1.2}
+.res .u{font-size:11px;color:var(--fg2);font-family:ui-monospace,Menlo,monospace;margin:2px 0 0}
+.res .v.bad{color:var(--bad)}
+
+.segs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px}
+.seg{padding:6px 14px;font-size:13px;border:1px solid var(--line);background:transparent;
+  color:var(--fg);border-radius:8px;cursor:pointer;font-family:inherit}
+.seg:hover{border-color:var(--accent)}
+.seg[data-on="1"]{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+.seg.mini{padding:3px 9px;font-size:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+input[type=number]{width:100%;height:36px;padding:0 10px;font-size:15px;font-family:inherit;
+  background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px}
+input[type=number]:read-only{background:var(--accent-bg);color:var(--accent);font-weight:500;border-color:var(--accent)}
+input[type=range]{flex:1;accent-color:var(--accent);min-width:70px}
+textarea{width:100%;min-height:72px;padding:8px 10px;font-size:12px;
+  font-family:ui-monospace,Menlo,monospace;background:var(--bg);color:var(--fg);
+  border:1px solid var(--line);border-radius:8px;resize:vertical;line-height:1.5}
+label.ck{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin:10px 0 0}
+.rw{display:flex;align-items:center;gap:12px;margin:0 0 10px}
+.rw>span.n{font-size:13px;color:var(--fg2);min-width:148px}
+.rw>span.o{font-size:13px;font-weight:500;min-width:84px;text-align:right;
+  font-family:ui-monospace,Menlo,monospace}
+.mc{background:var(--soft);border-radius:8px;padding:10px 12px}
+.mc .k{font-size:11px;color:var(--fg2);margin:0 0 3px}
+.mc .v{font-size:16px;font-weight:500;margin:0;font-family:ui-monospace,Menlo,monospace}
+.mc .u{font-size:10px;color:var(--fg2);font-family:ui-monospace,Menlo,monospace}
+.bar{height:5px;border-radius:3px;background:var(--line);margin:6px 0 0;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent)}
+.note{border-radius:8px;padding:11px 13px;font-size:13px;margin:14px 0 0}
+.note.w{background:var(--warn-bg);color:var(--warn)}
+.note.g{background:var(--ok-bg);color:var(--ok)}
+.note.b{background:var(--bad-bg);color:var(--bad)}
+canvas{width:100%;display:block;border-radius:8px}
+.cap{font-size:12px;color:var(--fg2);margin:8px 0 0}
+.chead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px}
+.chead .t{font-size:13px;font-weight:500}
+details{margin:0 0 14px}
+details.adv{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 18px}
+details.adv[open]{padding-bottom:16px}
+summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:500}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13px}
+th,td{text-align:left;padding:6px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--fg2);font-weight:500}
+td.n{font-family:ui-monospace,Menlo,monospace;text-align:right}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--soft);padding:1px 5px;border-radius:4px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;
+  background:var(--accent-bg);color:var(--accent);margin-left:6px;vertical-align:1px;text-decoration:none}
+a.tag:hover{background:var(--accent);color:var(--card)}
+.tag.beta{background:var(--warn-bg);color:var(--warn)}
+.chg{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 18px 16px;margin:0 0 14px}
+.rel{border-top:1px solid var(--line);padding:14px 0 2px}
+.rel:first-child{border-top:none}
+.rel-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 4px}
+.rel-v{font-size:15px;font-weight:600;font-family:ui-monospace,Menlo,monospace}
+.rel-d{font-size:12px;color:var(--fg2);font-family:ui-monospace,Menlo,monospace}
+.rel-s{font-size:12px;color:var(--fg2)}
+.rel ul{margin:8px 0 0;padding:0;list-style:none}
+.rel li{font-size:13px;margin:0 0 8px;padding:0 0 0 62px;position:relative;line-height:1.55}
+.kind{position:absolute;left:0;top:2px;font-size:10px;line-height:16px;height:16px;
+  padding:0 7px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap}
+.k-phy{background:var(--bad-bg);color:var(--bad)}
+.k-ui{background:var(--accent-bg);color:var(--accent)}
+.k-num{background:var(--warn-bg);color:var(--warn)}
+.k-ok{background:var(--ok-bg);color:var(--ok)}
+.why{color:var(--fg2)}
+</style>
+</head>
+<body><div class="wrap">
+
+<nav class="nav">
+  <span class="brand">¹⁷¹Yb 工具集</span>
+  <a href="../index.html">首页</a>
+  <a href="rabi-power.html">Rabi–功率</a>
+  <a href="raman-qubit.html" class="on">拉曼比特</a>
+  <span class="sp"></span>
+  <span class="stamp" id="buildstamp"></span>
+</nav>
+
+
+<h1>¹⁷¹Yb 核自旋比特 · 拉曼跃迁计算器<a class="tag" href="#changelog">v4</a></h1>
+<p class="sub">¹S₀ 核自旋比特经 ³P₁ (556 nm) 的双光子拉曼驱动。约定与 <code>00_2_yb556_rabi_power_conversion.ipynb</code>、<code>coefficients_calculation_Ytterbium171.py</code> 一致。</p>
+
+<div class="res">
+  <div><p class="k">拉曼 Ω_R/2π</p><p class="v" id="R-om">—</p><p class="u" id="R-omu">—</p></div>
+  <div><p class="k">π/2 脉冲时间</p><p class="v" id="R-t">—</p><p class="u" id="R-tu">—</p></div>
+  <div><p class="k">π/2 门总误差</p><p class="v" id="R-e">—</p><p class="u" id="R-eu">—</p></div>
+  <div><p class="k">所需激光功率</p><p class="v" id="R-p">—</p><p class="u" id="R-pu">—</p></div>
+</div>
+
+<div class="card" style="padding:12px 14px">
+  <svg id="lvl" viewBox="0 0 700 250" style="width:100%;display:block"></svg>
+</div>
+
+<h2>主控</h2>
+<div class="card">
+  <div class="segs">
+    <span style="font-size:13px;color:var(--fg2)">求解</span>
+    <button class="seg" id="s-d" onclick="pick('d')">矩阵元 d</button>
+    <button class="seg" id="s-p" onclick="pick('p')">激光功率</button>
+    <button class="seg" data-on="1" id="s-f" onclick="pick('f')">拉曼 Ω_R</button>
+  </div>
+  <div class="grid3">
+    <div><p class="lbl">Δ 失谐 (MHz，相对 F′=3/2)</p><input type="number" id="v-D" value="180" step="10" oninput="calc()">
+      <div class="segs" style="margin:8px 0 0">
+        <button class="seg mini" onclick="setD(180)">180 M</button>
+        <button class="seg mini" onclick="setD(1000)">1 G</button>
+        <button class="seg mini" onclick="setD(13000)">13 G</button>
+        <button class="seg mini" onclick="setD(-2100)">−2.1 G</button>
+      </div></div>
+    <div><p class="lbl">P_laser 激光输出功率 (mW)</p><input type="number" id="v-p" value="80" step="1" oninput="calc()"></div>
+    <div><p class="lbl">Ω_R/2π (MHz)</p><input type="number" id="v-f" value="1.726" step="0.01" oninput="calc()"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 130px;gap:18px;align-items:center;margin-top:18px">
+    <div>
+      <div class="rw" style="margin-bottom:6px"><span class="n">S₃ 圆偏振度</span><input type="range" id="r-s3" min="0" max="1" value="0.836" step="0.002" oninput="calc()"><span class="o" id="o-s3">0.836</span></div>
+      <p class="cap" style="margin:0" id="s3note">—</p>
+    </div>
+    <svg id="ell" viewBox="0 0 130 110" style="width:130px;display:block"></svg>
+  </div>
+</div>
+
+<h2>误差预算</h2>
+<div class="grid4">
+  <div class="mc"><p class="k">散射（Raman + Rayleigh）</p><p class="v" id="e-sc">—</p><div class="bar"><i id="b-sc"></i></div></div>
+  <div class="mc"><p class="k">光频移失谐</p><p class="v" id="e-ls">—</p><div class="bar"><i id="b-ls"></i></div></div>
+  <div class="mc"><p class="k">强度噪声</p><p class="v" id="e-in">—</p><div class="bar"><i id="b-in"></i></div></div>
+  <div class="mc"><p class="k">合计</p><p class="v" id="e-tot">—</p><p class="u" id="e-dom">—</p></div>
+</div>
+<div class="card" style="margin-top:14px">
+  <div class="grid4">
+    <div class="mc"><p class="k">微分光频移 Δ_LS</p><p class="v" id="m-ls">—</p></div>
+    <div class="mc"><p class="k">净比特劈裂 Δ_N</p><p class="v" id="m-dn">—</p></div>
+    <div class="mc"><p class="k">π/2 期间 Z 轴进动</p><p class="v" id="m-pr">—</p></div>
+    <div class="mc"><p class="k">Δ/Ω_π 绝热余量</p><p class="v" id="m-ad">—</p></div>
+  </div>
+  <label class="ck"><input type="checkbox" id="c-comp" onchange="calc()"> 光频移已由 Z 门校准补偿（从合计中扣除）</label>
+  <p class="cap">Δ_LS = δ_Z(8Ω_σ²+Ω_π²)/(4Δ²)，由 ³P₁ 全部六个磁子能级求和得到。驱动光把比特劈裂推离塞曼值，使拉曼驱动本身失谐 —— 这是论文里最大的单项门误差。它可以被标定补偿，但补偿本身有残差。</p>
+</div>
+
+<div id="warn"></div>
+
+<details class="adv">
+<summary>光束几何与光路</summary>
+<div style="margin-top:14px">
+  <div class="rw"><span class="n">光斑 w_x (µm, 1/e² 强度)</span><input type="range" id="r-x" min="2" max="1000" value="365" step="1" oninput="calc()"><span class="o" id="o-x">365</span></div>
+  <div class="rw"><span class="n">光斑 w_y (µm, 1/e² 强度)</span><input type="range" id="r-y" min="2" max="1000" value="365" step="1" oninput="calc()"><span class="o" id="o-y">365</span></div>
+  <div class="rw"><span class="n">光路透过率 η</span><input type="range" id="r-e" min="0.02" max="1" value="0.5" step="0.01" oninput="calc()"><span class="o" id="o-e">0.50</span></div>
+  <div class="rw"><span class="n">光束与 B 夹角 Θ_kB (°)</span><input type="range" id="r-k" min="0" max="90" value="90" step="1" oninput="calc()"><span class="o" id="o-k">90</span></div>
+  <div class="rw"><span class="n">磁场 B (G)</span><input type="range" id="r-b" min="0.1" max="20" value="1.66" step="0.02" oninput="calc()"><span class="o" id="o-b">1.66</span></div>
+  <div class="rw"><span class="n">可用最大功率 (mW)</span><input type="range" id="r-pm" min="10" max="2000" value="500" step="10" oninput="calc()"><span class="o" id="o-pm">500</span></div>
+  <p class="cap">Θ_kB = 90°（光束⊥B）耦合最强；Θ_kB = 0° 时矢量光频移与 B 平行，只移频不翻转。核自旋旋磁比 γ_n = 751 Hz/G。</p>
+</div>
+</details>
+
+<details class="adv">
+<summary>偏振输入方式与椭圆取向</summary>
+<div style="margin-top:14px">
+  <div class="segs">
+    <button class="seg" data-on="1" id="pm-s3" onclick="pmode('s3')">S₃（偏振仪）</button>
+    <button class="seg" id="pm-qwp" onclick="pmode('qwp')">λ/4 波片角度</button>
+    <button class="seg" id="pm-af" onclick="pmode('af')">α + φ_HV（理论）</button>
+  </div>
+  <div id="p-s3">
+    <div class="rw"><span class="n">椭圆取向 α (°)</span><input type="range" id="r-a" min="1" max="89" value="61.6" step="0.2" oninput="calc()"><span class="o" id="o-a">61.6</span></div>
+    <p class="cap">S₃ 决定 Ω_R；α = arctan|E_y/E_z| 只决定 S₃ 如何分配到 π 与 σ 两条腿，影响 Ω_π、绝热余量与光频移。论文实测 α = 61.6°。<b>此处不再假设 45°。</b></p>
+  </div>
+  <div id="p-qwp" style="display:none">
+    <div class="rw"><span class="n">波片角度 θ (°)</span><input type="range" id="r-th" min="0" max="180" value="45" step="0.5" oninput="calc()"><span class="o" id="o-th">45</span></div>
+    <div class="rw"><span class="n">快轴零点 θ₀ (°)</span><input type="range" id="r-t0" min="-45" max="45" value="0" step="0.5" oninput="calc()"><span class="o" id="o-t0">0</span></div>
+    <p class="cap">线偏振过 λ/4 波片：S₃ = sin2(θ−θ₀)，α 与 φ_HV 同时由琼斯矩阵给出。θ₀ 由下方波片扫描拟合标定。</p>
+  </div>
+  <div id="p-af" style="display:none">
+    <div class="rw"><span class="n">倾角 α (°)</span><input type="range" id="r-a2" min="1" max="89" value="61.6" step="0.2" oninput="calc()"><span class="o" id="o-a2">61.6</span></div>
+    <div class="rw"><span class="n">相位 φ_HV (°)</span><input type="range" id="r-f" min="0" max="90" value="90" step="1" oninput="calc()"><span class="o" id="o-f">90</span></div>
+    <p class="cap">S₃ = sin2α·sinφ_HV。</p>
+  </div>
+</div>
+</details>
+
+<details class="adv">
+<summary>不确定度与噪声</summary>
+<div style="margin-top:14px">
+  <div class="rw"><span class="n">束腰误差 σ_w/w</span><input type="range" id="r-sw" min="0" max="0.2" value="0.05" step="0.005" oninput="calc()"><span class="o" id="o-sw">5.0%</span></div>
+  <div class="rw"><span class="n">功率标定误差 σ_P/P</span><input type="range" id="r-sp" min="0" max="0.2" value="0.05" step="0.005" oninput="calc()"><span class="o" id="o-sp">5.0%</span></div>
+  <div class="rw"><span class="n">矩阵元误差 σ_d/d</span><input type="range" id="r-sd" min="0" max="0.05" value="0.01" step="0.002" oninput="calc()"><span class="o" id="o-sd">1.0%</span></div>
+  <div class="rw"><span class="n">脉冲强度噪声 σ_I/I</span><input type="range" id="r-si" min="0" max="0.05" value="0.01" step="0.002" oninput="calc()"><span class="o" id="o-si">1.0%</span></div>
+  <p class="cap">Ω_R ∝ P/(w_xw_y)·d²，故 σ_Ω/Ω = √[(σ_P/P)² + 2(σ_w/w)² + (2σ_d/d)²]。束腰贡献最大。强度噪声只进误差预算，不进不确定度带。</p>
+</div>
+</details>
+
+<h2>Ω_R 随激光功率变化</h2>
+<div class="card" style="padding:14px">
+  <div class="chead"><span class="t">功率扫描</span>
+    <span class="segs" style="margin:0">
+      <button class="seg mini" id="ax-log" data-on="1" onclick="setAx('log')">双对数</button>
+      <button class="seg mini" id="ax-lin" onclick="setAx('lin')">双线性</button>
+    </span></div>
+  <canvas id="c1" height="330"></canvas>
+</div>
+<p class="cap">阴影为不确定度带，右轴 π/2 脉冲时间。灰线为 ×0.5 / ×2 束腰。红虚线为可用功率上限。切到双线性可看清工作点附近的百分比偏差。</p>
+
+<h2>功率–失谐设计图</h2>
+<div class="card" style="padding:14px">
+  <canvas id="c2" height="380"></canvas>
+</div>
+<p class="cap">白虚线为等 Ω_R 线，白实线为等总误差线。灰区超出可用功率。工作点为白圈。</p>
+
+<h2>Ω_R 随 λ/4 波片角度变化</h2>
+<div class="card" style="padding:14px">
+  <canvas id="c3" height="310"></canvas>
+</div>
+<p class="cap">理论与实验直接握手的曲线：S₃ = sin2(θ−θ₀)。峰值处对角度一阶不敏感（偏 1° 只损失 0.06%），半高处偏 1° 损失约 3.4% —— 工作点应放在峰上。</p>
+
+<h2>实测数据与标定</h2>
+<div class="card">
+  <div class="grid3">
+    <div><p class="lbl">功率扫描：P_laser(mW) &nbsp; Ω_R/2π(MHz)</p>
+      <textarea id="d-pow" placeholder="20&#9;0.42&#10;40&#9;0.87&#10;80&#9;1.71" oninput="calc()"></textarea></div>
+    <div><p class="lbl">波片扫描：θ(°) &nbsp; Ω_R/2π(MHz)</p>
+      <textarea id="d-qwp" placeholder="0&#9;0.05&#10;22.5&#9;1.24&#10;45&#9;1.73" oninput="calc()"></textarea></div>
+  </div>
+  <div id="fitout" style="margin-top:14px"></div>
+  <div class="segs" style="margin:14px 0 0">
+    <button class="seg mini" onclick="exportCSV()">导出曲线 CSV</button>
+    <button class="seg mini" onclick="copyStamp()">复制参数行</button>
+  </div>
+</div>
+
+<details class="adv">
+<summary>偶极矩阵元与 notebook 对账</summary>
+<div style="margin-top:6px">
+<p class="cap" style="margin:0 0 8px">与 notebook 第 3 单元的 <code>D_linewidth</code> 表一一对应。d_cyc = √(3πε₀ℏc³Γ/ω₀³) 是每个 q 分量的裸跃迁矩阵元；本工具主式用的 d = √3·d_cyc = ⟨¹S₀‖er‖³P₁⟩。</p>
+<table>
+<tr><th></th><th style="text-align:right">g₀ &nbsp;m<sub>F</sub>=+1/2</th><th style="text-align:right">g₁ &nbsp;m<sub>F</sub>=−1/2</th></tr>
+<tr><td>e₂ &nbsp;F′=3/2, m′=−1/2</td><td class="n" id="D-00">—</td><td class="n" id="D-01">—</td></tr>
+<tr><td>e₃ &nbsp;F′=3/2, m′=+1/2</td><td class="n" id="D-10">—</td><td class="n" id="D-11">—</td></tr>
+</table>
+<div class="grid4" style="margin-top:10px">
+  <div class="mc"><p class="k">d_cyc</p><p class="v" id="m-dcyc">—</p><p class="u">ea₀</p></div>
+  <div class="mc"><p class="k">峰值光强 I₀</p><p class="v" id="m-i">—</p></div>
+  <div class="mc"><p class="k">电场 E₀</p><p class="v" id="m-E">—</p></div>
+  <div class="mc"><p class="k">到达原子功率</p><p class="v" id="m-pa">—</p></div>
+</div>
+<p class="cap">单光子 Rabi 由 Ω_ij = ε_q·D_ij·E₀/ℏ 给出，与 notebook 一致：Ω_π/2π = <span id="m-op">—</span>，Ω_σ/2π = <span id="m-og">—</span>。<code>.py</code> 文件里的 <code>rabi_from_power</code> / <code>gaussian_power_for_rabi</code> 对应本页"求解"的三向切换，I₀ 与 E₀ 的定义完全相同。</p>
+</div>
+</details>
+
+<details class="adv">
+<summary>物理说明与标定流程</summary>
+<div style="margin-top:8px">
+<h3 style="font-size:14px;font-weight:500;margin:12px 0 6px">为什么线偏振驱动不了这个比特</h3>
+<p style="font-size:13px;margin:8px 0">¹S₀ 电子角动量为零，比特是纯核自旋，而光只耦合电子。对 F=1/2 流形二阶有效哈密顿量只有标量项与矢量项 <code>i(ε*×ε)·F</code>，能翻转自旋的只有后者，它正比于圆偏振度并沿光束方向。因此耦合 = |S₃|·sinΘ_kB：<b>线偏振（S₃=0）为零，光束沿 B（Θ_kB=0）也为零。</b>偏振椭圆的取向不改变耦合强度。</p>
+<h3 style="font-size:14px;font-weight:500;margin:14px 0 6px">为什么要带 F′=1/2 支路</h3>
+<p style="font-size:13px;margin:8px 0">若所有中间态失谐相同，二阶求和退化为电子空间的恒等算符，核自旋翻转振幅严格为零。耦合完全来自 F′=3/2 与 F′=1/2 的失谐差，故 Ω_R ∝ Δ_hf/[Δ(Δ+Δ_hf)]。小失谐下 ≈ 1/Δ，大失谐下转为 1/Δ²。忽略此项在 180 MHz 差 3%，在 13 GHz 差 3.2 倍。</p>
+<h3 style="font-size:14px;font-weight:500;margin:14px 0 6px">标定流程</h3>
+<table>
+<tr><th style="width:6%">步</th><th>操作</th><th style="width:36%">判读</th></tr>
+<tr><td>1</td><td>固定功率与失谐，转 λ/4 波片扫一圈量 Rabi 频率，贴进波片扫描框</td><td>拟合出 θ₀ 与幅度比。残差大 = 偏振或几何有问题；残差小但幅度比偏离 1 = 光斑或功率标定有问题</td></tr>
+<tr><td>2</td><td>波片停在峰值，扫功率，贴进功率扫描框</td><td>反推等效束腰，与刀口法/相机对比，±10% 内即认为闭合</td></tr>
+<tr><td>3</td><td>Ramsey 测比特劈裂随驱动功率的移动</td><td>与 Δ_LS 读数对比，验证光频移模型</td></tr>
+</table>
+<h3 style="font-size:14px;font-weight:500;margin:14px 0 6px">常数与出处</h3>
+<p style="font-size:13px;margin:8px 0">Γ₀/2π = 183 kHz；d = 0.5407 ea₀；Δ_hf/2π = +5.936 GHz（F′=3/2 在上，A(³P₁) = 3957.833 MHz）；Δ_e/2π = 2.65 MHz；γ_n = 751 Hz/G。</p>
+<p style="font-size:13px;margin:8px 0;color:var(--fg2)">Jenkins et al., PRX <b>12</b>, 021027 (2022) 附录 D 与勘误 PRX <b>13</b>, 029902 (2023)；超精细常数 Jones, van Kann, McFerran, Appl. Opt. <b>62</b>, 3932 (2023)。</p>
+</div>
+</details>
+
+<h2 id="changelog">修订记录</h2>
+<div class="chg">
+<div class="rel">
+  <div class="rel-h"><span class="rel-v">v4</span><span class="rel-d">2026-07-31</span>
+    <span class="rel-s">补完误差预算，加能级图与偏振椭圆，向 notebook / py 约定对齐</span></div>
+  <ul>
+    <li><span class="kind k-phy">物理</span><b>新增微分光频移与失谐门误差。</b>
+      <span class="why">v3 只报散射误差，而它不是主导项。对 ³P₁ 全部六个磁子能级求和后化简得 Δ_LS = δ_Z(8Ω_σ²+Ω_π²)/(4Δ²)，在论文工作点给出 55.6 kHz（论文 55.5 kHz），净劈裂 54.3 kHz（论文 54.2 kHz）。由此产生的 Z 轴进动使 π/2 门误差约 1.5×10⁻³，比散射项大一倍以上。v3 把总误差低估约 3.7 倍。</span></li>
+    <li><span class="kind k-phy">物理</span>新增强度噪声门误差 sin²(σ_θ√(2/π))，σ_θ = (π/2)σ_I。误差预算现为散射 + 光频移 + 强度噪声三项并给出主导项标注。</li>
+    <li><span class="kind k-phy">物理</span><b>修正 S₃ 模式下 α 被硬编码为 45° 的缺陷。</b>
+      <span class="why">v3 在 S₃ 模式恒用 α=45°，使 Ω_π 与绝热余量读数最多差 1.6 倍（45° 读 6.5，实测 61.6° 应为 9.7），并会误触发警告。现 α 为独立可调项，默认 61.6°。</span></li>
+    <li><span class="kind k-ui">界面</span><b>顶部结论条</b>：Ω_R、π/2 时间、总误差、所需功率四个数在首屏可见，全部参数收进折叠区。</li>
+    <li><span class="kind k-ui">界面</span><b>新增能级图</b>，标出 ¹S₀ 两个核自旋态、³P₁ 的 F′=3/2 与 F′=1/2、5.936 GHz 劈裂、σ⁺ 与 π 两条拉曼路径，失谐标记随滑块移动（对数压缩坐标）。</li>
+    <li><span class="kind k-ui">界面</span><b>新增偏振椭圆实时图示</b>，随 S₃ 从直线连续变形到圆，直观呈现"线偏振耦合为零"。</li>
+    <li><span class="kind k-ui">界面</span>功率图线性/对数改为双轴联动（v3 切线性后 y 轴仍是对数，看不出百分比偏差）。波片图标出当前工作点。拟合结果增加 RMS 残差与相对残差。参数戳缩短并移入图内。设计图的等误差线改用总误差而非仅散射项。</li>
+    <li><span class="kind k-num">对账</span>新增偶极矩阵元表，与 notebook 第 3 单元 <code>D_linewidth</code> 逐项对应；显示 d_cyc = 0.3123 ea₀、I₀、E₀，与 <code>.py</code> 的 <code>rabi_from_power</code> 约定一致，可直接交叉验证。</li>
+    <li><span class="kind k-num">待定</span>Θ_kB = 90° 与 θ₀ = 0° 仍是占位值，需实验组提供或由标定流程第 1 步确定。<b>标定完成前绝对幅度不应作定量预测。</b></li>
+  </ul>
+</div>
+<div class="rel">
+  <div class="rel-h"><span class="rel-v">v3</span><span class="rel-d">2026-07-31</span><span class="rel-s">实验版：可测量坐标、不确定度带、数据握手</span></div>
+  <ul>
+    <li><span class="kind k-phy">物理</span><b>几何因子改写为 |S₃|·sinΘ_kB。</b><span class="why">sin2α·sinφ_HV 恒等于圆偏振度 S₃，且 B⊥光束时耦合与椭圆取向无关，未知几何只剩 θ₀ 与 Θ_kB 两个可标定参数。新增 λ/4 波片模型 S₃ = sin2(θ−θ₀)。</span></li>
+    <li><span class="kind k-ui">界面</span>功率轴改为激光输出功率并引入透过率 η；曲线加不确定度带；新增波片扫描图、实测数据叠加与反推标定；删除"正确 vs 旧式"对比曲线。</li>
+  </ul>
+</div>
+<div class="rel">
+  <div class="rel-h"><span class="rel-v">v2</span><span class="rel-d">2026-07-31</span><span class="rel-s">修正偏振相位定义与超精细干涉</span></div>
+  <ul>
+    <li><span class="kind k-phy">物理</span><b>φ 改为 φ_HV，cos → sin。</b><span class="why">v1 把论文的 φ（Rabi 分量相位差）当成了电场分量相位，二者差 90°，导致 v1 默认工作点（线偏振）实际耦合为零。</span></li>
+    <li><span class="kind k-phy">物理</span>加入 F′=1/2 相消干涉因子 Δ_hf/(Δ+Δ_hf)；Δ_hf 符号纠正为 +5.936 GHz（F′=3/2 在上），删除 +5.9 GHz 处的虚假发散警告。</li>
+    <li><span class="kind k-ok">验证</span>论文两个基准：180 MHz/&lt;40 mW → 1.73 MHz（论文 1.77）；13 GHz/1 W/1×0.02 mm → 1.54 MHz、散射误差 2.8×10⁻⁶（论文 1.47 MHz、3×10⁻⁶）。</li>
+  </ul>
+</div>
+<div class="rel">
+  <div class="rel-h"><span class="rel-v">v1</span><span class="rel-d">—</span><span class="rel-s">初稿</span></div>
+  <ul><li><span class="kind k-ok">保留</span>经复核正确且沿用至今：d = 0.5407 ea₀ 的线宽标定、I₀ = 2P/(πw_xw_y)、E₀ = √(2I₀/cε₀)、角向系数 √2/3 与 1/3、总系数 2/9。</li></ul>
+</div>
+</div>
+
+<footer>
+  <span id="footstamp"></span>
+  <span style="flex:1"></span>
+  <button class="seg mini" onclick="shareLink()">复制链接</button>
+  <a href="../index.html">返回首页</a>
+</footer>
+
+<script src="../shared/constants.js"></script>
+<script src="../shared/physics.js"></script>
+<script src="../shared/units.js"></script>
+<script src="../shared/urlstate.js"></script>
+<script src="../shared/plot.js"></script>
+<script src="../shared/version.js"></script>
+<script>
+YBV.render('buildstamp');
+document.getElementById('footstamp').textContent = YBV.info.short;
+function shareLink(){
+  YBURL.copyLink().then(function(ok){
+    var b=event.target; var old=b.textContent;
+    b.textContent = ok ? '已复制' : '复制失败';
+    setTimeout(function(){ b.textContent=old; }, 1400);
+  });
+}
+</script>
+<script>
+"use strict";
+/* 常数全部来自 shared/constants.js，勿在本文件重新定义。
+ * 注意 AU 从 8.4783536e-30 改为 CODATA 值 8.478353625e-30（相对差 3e-9，无实质影响）。 */
+var HB=YBC.SI.hbar, CC=YBC.SI.c, EP=YBC.SI.eps0, AU=YBC.SI.ea0;
+var GAM0=YBC.YB171.Gamma_556.v, DHF=YBC.YB171.D_hf.v,
+    DEZ=YBC.YB171.D_e.v, GAMN=YBC.YB171.gamma_n.v;
+var API=Math.SQRT2/3, ASG=1/3, R3=Math.sqrt(3);
+var tgt='f', pol='s3', axmode='log', S={};
+
+function hfFac(D){ return YB.hfFactor(D); }
+function Kco(D,wx,wy,g){ var Dr=2*Math.PI*D; if(!Dr) return 0;
+  return (2/9)*g*hfFac(D)/(Math.PI*CC*EP*HB*HB*wx*wy*Dr); }
+function scatErr(D){ return YB.scatterError(D); }
+function areaErr(th){ return YB.areaError(th); }
+function qwp(u){ var r=YB.qwp(u); return {S3:r.S3, a:r.alpha}; }
+function num(id){ var v=parseFloat(document.getElementById(id).value); return isFinite(v)?v:0; }
+function set(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
+
+function pick(t){ tgt=t; ['d','p','f'].forEach(function(k){
+  document.getElementById('s-'+k).dataset.on=(k===t)?'1':'0';
+  var el=document.getElementById('v-'+k); if(el) el.readOnly=(k===t); });
+  document.getElementById('v-d').style.display=''; calc(); }
+function pmode(m){ pol=m; ['s3','qwp','af'].forEach(function(k){
+  document.getElementById('pm-'+k).dataset.on=(k===m)?'1':'0';
+  document.getElementById('p-'+k).style.display=(k===m)?'':'none'; }); calc(); }
+function setD(v){ document.getElementById('v-D').value=v; calc(); }
+function setAx(m){ axmode=m;
+  document.getElementById('ax-log').dataset.on=(m==='log')?'1':'0';
+  document.getElementById('ax-lin').dataset.on=(m==='lin')?'1':'0'; drawAll(); }
+function parseXY(id){ var r=document.getElementById(id).value.trim(); if(!r) return [];
+  var o=[]; r.split(/\n+/).forEach(function(l){
+    var p=l.trim().split(/[\s,;\t]+/).map(parseFloat);
+    if(p.length>=2&&isFinite(p[0])&&isFinite(p[1])) o.push([p[0],p[1]]); }); return o; }
+
+/* hidden d field: keep visible only when solving for it */
+var dHold=0.5407;
+
+function readState(){
+  S.D=num('v-D')*1e6; S.wx=num('r-x')*1e-6; S.wy=num('r-y')*1e-6;
+  S.eta=num('r-e'); S.thk=num('r-k')*Math.PI/180; S.B=num('r-b');
+  S.Pmax=num('r-pm')*1e-3; S.Plas=num('v-p')*1e-3; S.W=2*Math.PI*num('v-f')*1e6;
+  S.sw=num('r-sw'); S.sp=num('r-sp'); S.sd=num('r-sd'); S.si=num('r-si');
+  S.rel=Math.sqrt(S.sp*S.sp+2*S.sw*S.sw+4*S.sd*S.sd);
+  S.d=(tgt==='d')?dHold*AU:num('v-d')*AU;
+  if(pol==='s3'){ S.S3=num('r-s3'); S.a=num('r-a')*Math.PI/180; }
+  else if(pol==='qwp'){ var j=qwp((num('r-th')-num('r-t0'))*Math.PI/180); S.S3=j.S3; S.a=j.a; }
+  else { S.a=num('r-a2')*Math.PI/180; S.S3=Math.sin(2*S.a)*Math.sin(num('r-f')*Math.PI/180); }
+  S.g=Math.abs(S.S3)*Math.sin(S.thk);
+}
+
+function calc(){
+  ['x','y','k','th','t0','a','a2','f'].forEach(function(k){
+    var e=document.getElementById('r-'+k); if(e) set('o-'+k,e.value); });
+  set('o-e',num('r-e').toFixed(2)); set('o-b',num('r-b').toFixed(2));
+  set('o-pm',num('r-pm')); set('o-s3',num('r-s3').toFixed(3));
+  ['sw','sp','sd','si'].forEach(function(k){ set('o-'+k,(num('r-'+k)*100).toFixed(1)+'%'); });
+
+  readState();
+  var K=Kco(S.D,S.wx,S.wy,S.g), Pat;
+  if(tgt==='f'){ Pat=S.eta*S.Plas; S.W=K*S.d*S.d*Pat;
+    document.getElementById('v-f').value=(Math.abs(S.W)/2/Math.PI/1e6).toFixed(4); }
+  else if(tgt==='p'){ var dn=Math.abs(K*S.d*S.d); Pat=dn>0?Math.abs(S.W)/dn:0;
+    S.Plas=S.eta>0?Pat/S.eta:0; document.getElementById('v-p').value=(S.Plas*1e3).toFixed(3); }
+  else { Pat=S.eta*S.Plas; var d2=Math.abs(K*Pat);
+    S.d=d2>0?Math.sqrt(Math.abs(S.W)/d2):0; dHold=S.d/AU;
+    document.getElementById('v-d').value=dHold.toFixed(5); }
+  S.Pat=Pat;
+
+  var I=Pat>0?2*Pat/(Math.PI*S.wx*S.wy):0, E0=Math.sqrt(2*I/(CC*EP));
+  var op=API*S.d*E0*Math.cos(S.a)/HB, og=ASG*S.d*E0*Math.sin(S.a)/Math.SQRT2/HB;
+  var Dr=2*Math.PI*S.D, W=Math.abs(S.W);
+  var dLS=Dr?(2*Math.PI*DEZ)/(4*Dr*Dr)*(8*og*og+op*op):0;
+  var dN=dLS-2*Math.PI*GAMN*S.B;
+  var t2=W?(Math.PI/2)/W:0, prec=dN*t2;
+  var eSC=scatErr(S.D), eLS=areaErr(prec), eIN=areaErr((Math.PI/2)*S.si);
+  var comp=document.getElementById('c-comp').checked;
+  var eTOT=eSC+(comp?0:eLS)+eIN;
+  S.eTOT=eTOT; S.op=op; S.og=og; S.E0=E0; S.I=I;
+
+  set('R-om',(W/2/Math.PI/1e6).toFixed(3)+' MHz');
+  set('R-omu','± '+(W/2/Math.PI/1e6*S.rel).toFixed(3)+'  ('+(S.rel*100).toFixed(0)+'%)');
+  set('R-t',t2?(t2*1e9).toFixed(0)+' ns':'—');
+  set('R-tu',t2?'π 脉冲 '+(2*t2*1e9).toFixed(0)+' ns':'—');
+  set('R-e',isFinite(eTOT)?eTOT.toExponential(2):'∞');
+  set('R-eu',comp?'光频移已补偿':'含光频移未补偿');
+  set('R-p',(S.Plas*1e3).toFixed(1)+' mW');
+  set('R-pu','到达原子 '+(Pat*1e3).toFixed(1)+' mW · 上限 '+(S.Pmax*1e3).toFixed(0)+' mW');
+  document.getElementById('R-p').className='v'+(S.Plas>S.Pmax?' bad':'');
+
+  var mx=Math.max(eSC,eLS,eIN,1e-30);
+  set('e-sc',eSC.toExponential(2)); set('e-ls',eLS.toExponential(2)); set('e-in',eIN.toExponential(2));
+  set('e-tot',eTOT.toExponential(2));
+  var dom=(eSC>=eLS&&eSC>=eIN)?'散射主导':((eLS>=eIN)?'光频移主导':'强度噪声主导');
+  set('e-dom',comp?'光频移已扣除':dom);
+  document.getElementById('b-sc').style.width=(eSC/mx*100)+'%';
+  document.getElementById('b-ls').style.width=(eLS/mx*100)+'%';
+  document.getElementById('b-in').style.width=(eIN/mx*100)+'%';
+
+  set('m-ls',(dLS/2/Math.PI/1e3).toFixed(1)+' kHz');
+  set('m-dn',(dN/2/Math.PI/1e3).toFixed(1)+' kHz');
+  set('m-pr',(prec*180/Math.PI).toFixed(2)+' °');
+  set('m-ad',op?Math.abs(Dr/op).toFixed(1):'—');
+  set('m-i',(I/1e4).toFixed(2)+' W/cm²'); set('m-E',E0.toExponential(3)+' V/m');
+  set('m-pa',(Pat*1e3).toFixed(2)+' mW');
+  set('m-op',(op/2/Math.PI/1e6).toFixed(2)+' MHz');
+  set('m-og',(og/2/Math.PI/1e6).toFixed(2)+' MHz');
+  var dc=S.d/AU/R3; set('m-dcyc',dc.toFixed(4));
+  set('D-00',(Math.sqrt(1/3)*dc).toFixed(5)+'  (q=−1)');
+  set('D-01',(Math.sqrt(2/3)*dc).toFixed(5)+'  (q=0)');
+  set('D-10',(Math.sqrt(2/3)*dc).toFixed(5)+'  (q=0)');
+  set('D-11',(Math.sqrt(1/3)*dc).toFixed(5)+'  (q=+1)');
+  set('s3note','S₃='+S.S3.toFixed(3)+'  几何因子 |S₃|·sinΘ = '+S.g.toFixed(3)
+    +(S.S3>0.98?'  ·  接近圆偏振，最优':(S.S3<0.1?'  ·  接近线偏振，耦合趋零':'')));
+
+  var w=[],bad=false;
+  if(S.g<0.02){ w.push('几何因子 ≈ 0：偏振接近线偏振或光束接近平行于 B，<b>拉曼耦合为零</b>'); bad=true; }
+  if(S.Plas>S.Pmax){ w.push('所需功率 '+(S.Plas*1e3).toFixed(0)+' mW <b>超过可用上限</b> '+(S.Pmax*1e3).toFixed(0)+' mW'); bad=true; }
+  if(op&&Math.abs(Dr/op)<10) w.push('Δ/Ω_π = '+Math.abs(Dr/op).toFixed(1)+' &lt; 10，绝热消除余量不足，微扰式已不严格');
+  if(Math.abs(S.D)/DEZ<10) w.push('Δ/Δ_e = '+(Math.abs(S.D)/DEZ).toFixed(1)+' &lt; 10，m′=±1/2 劈裂不可忽略');
+  if(Math.abs(S.D+DHF)<1.5e9){ w.push('Δ = '+(S.D/1e9).toFixed(2)+' GHz 接近 F′=1/2 共振（−5.94 GHz）'); bad=true; }
+  if(!comp&&eLS>2*eSC) w.push('光频移失谐是主导误差（'+eLS.toExponential(1)+'），建议加大失谐或用 Z 门补偿');
+  if(num('r-k')<20) w.push('Θ_kB = '+num('r-k')+'°，光束接近平行于 B，耦合被压制到 '+Math.sin(S.thk).toFixed(2));
+  document.getElementById('warn').innerHTML=w.length
+    ?'<div class="note '+(bad?'b':'w')+'">'+w.map(function(t){return '· '+t;}).join('<br>')+'</div>'
+    :'<div class="note g">当前工作点在适用范围内</div>';
+
+  drawLevel(); drawEllipse(); doFits(); drawAll(); if(window.YBURL) saveURL();
+}
+
+/* total-error helper for the design map */
+function totErr(D,Om){
+  var e=scatErr(D);
+  if(!document.getElementById('c-comp').checked&&Om>0){
+    var Dr=2*Math.PI*D;
+    var sc=Om/Math.abs(Kco(D,S.wx,S.wy,S.g)*S.d*S.d);
+    var I=2*sc/(Math.PI*S.wx*S.wy), E0=Math.sqrt(2*I/(CC*EP));
+    var op=API*S.d*E0*Math.cos(S.a)/HB, og=ASG*S.d*E0*Math.sin(S.a)/Math.SQRT2/HB;
+    var dLS=(2*Math.PI*DEZ)/(4*Dr*Dr)*(8*og*og+op*op);
+    e+=areaErr((dLS-2*Math.PI*GAMN*S.B)*(Math.PI/2)/Om);
+  }
+  return e+areaErr((Math.PI/2)*S.si);
+}
+
+/* ---------- level diagram ---------- */
+function drawLevel(){
+  var f2=getComputedStyle(document.body).getPropertyValue('--fg2').trim();
+  var fg=getComputedStyle(document.body).getPropertyValue('--fg').trim();
+  var c32=getComputedStyle(document.body).getPropertyValue('--p32').trim();
+  var c12=getComputedStyle(document.body).getPropertyValue('--p12').trim();
+  var y32=70, y12=142, s='';
+  function ln(x1,y,x2,c,wd){ return '<line x1="'+x1+'" y1="'+y+'" x2="'+x2+'" y2="'+y+'" stroke="'+c+'" stroke-width="'+(wd||2.5)+'" stroke-linecap="round"/>'; }
+  function tx(x,y,t,c,an,sz){ return '<text x="'+x+'" y="'+y+'" fill="'+c+'" font-size="'+(sz||11)+'" text-anchor="'+(an||'start')+'" font-family="ui-monospace,Menlo,monospace">'+t+'</text>'; }
+  var i;
+  for(i=0;i<4;i++) s+=ln(300+i*78,y32-9+i*6,352+i*78,c32);
+  s+=tx(296,y32-22,'³P₁  F′=3/2',c32,'start',12);
+  for(i=0;i<2;i++) s+=ln(340+i*78,y12,392+i*78,c12);
+  s+=tx(336,y12+20,'³P₁  F′=1/2',c12,'start',12);
+  s+='<line x1="620" y1="'+(y32+9)+'" x2="620" y2="'+y12+'" stroke="'+f2+'" stroke-width="1"/>';
+  s+='<path d="M620 '+(y32+9)+' l-3 6 h6 z M620 '+y12+' l-3 -6 h6 z" fill="'+f2+'"/>';
+  s+=tx(628,(y32+y12)/2+4,'5.936 GHz',f2);
+  s+=ln(70,214,150,fg); s+=ln(70,224,150,fg);
+  s+=tx(66,240,'¹S₀  F=1/2',fg,'start',12);
+  s+=tx(155,218,'|↑⟩ m=+1/2',f2); s+=tx(155,228,'|↓⟩ m=−1/2',f2);
+  var D=num('v-D')*1e6;
+  var off=88*Math.asinh(D/1e9)/Math.asinh(20);
+  var yl=Math.max(26,Math.min(196,y32-off));
+  s+='<line x1="270" y1="'+yl+'" x2="600" y2="'+yl+'" stroke="'+f2+'" stroke-width="1.4" stroke-dasharray="6 4"/>';
+  s+=tx(266,yl+4,'激光 Δ='+(Math.abs(D)>=1e9?(D/1e9).toFixed(2)+' GHz':(D/1e6).toFixed(0)+' MHz'),f2,'end');
+  s+='<path d="M150 219 Q 220 '+((219+yl)/2)+' 268 '+yl+'" fill="none" stroke="'+c32+'" stroke-width="1.6" opacity="0.85"/>';
+  s+='<path d="M268 '+yl+' Q 220 '+((219+yl)/2+16)+' 150 235" fill="none" stroke="'+c12+'" stroke-width="1.6" opacity="0.85" stroke-dasharray="4 3"/>';
+  s+=tx(196,(219+yl)/2-6,'σ⁺',c32,'middle',12);
+  s+=tx(196,(219+yl)/2+30,'π',c12,'middle',12);
+  s+=tx(400,232,'两条路径经 m′=±1/2 干涉；F′=3/2 与 F′=1/2 贡献反号',f2,'middle',11);
+  document.getElementById('lvl').innerHTML=s;
+}
+/* ---------- polarization ellipse ---------- */
+function drawEllipse(){
+  var acc=getComputedStyle(document.body).getPropertyValue('--accent').trim();
+  var f2=getComputedStyle(document.body).getPropertyValue('--fg2').trim();
+  var S3=Math.abs(S.S3), r=S3>1e-3?(1-Math.sqrt(Math.max(0,1-S3*S3)))/S3:0;
+  var a=40, b=Math.max(1.2,40*r), rot=90-num(pol==='af'?'r-a2':'r-a');
+  var s='<ellipse cx="65" cy="46" rx="'+a+'" ry="'+b+'" fill="none" stroke="'+acc
+    +'" stroke-width="2.2" transform="rotate('+rot+' 65 46)"/>';
+  s+='<line x1="65" y1="6" x2="65" y2="86" stroke="'+f2+'" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.6"/>';
+  s+='<text x="65" y="102" fill="'+f2+'" font-size="10" text-anchor="middle" font-family="ui-monospace,Menlo,monospace">'
+    +(S3>0.97?'圆偏振':(S3<0.08?'线偏振 · 无耦合':'椭圆 S₃='+S3.toFixed(2)))+'</text>';
+  s+='<text x="65" y="4" fill="'+f2+'" font-size="9" text-anchor="middle" font-family="ui-monospace,Menlo,monospace">B</text>';
+  document.getElementById('ell').innerHTML=s;
+}
+
+/* ---------- fits ---------- */
+function doFits(){
+  var out=[], dp=parseXY('d-pow');
+  if(dp.length>=2){
+    var sxy=0,sxx=0; dp.forEach(function(p){ sxy+=p[0]*p[1]; sxx+=p[0]*p[0]; });
+    var slope=sxx>0?sxy/sxx:0;
+    var K1=Math.abs(Kco(S.D,S.wx,S.wy,S.g)*S.d*S.d*S.eta)/(2*Math.PI)/1e9;
+    var ratio=K1>0?slope/K1:0, weff=ratio>0?Math.sqrt(S.wx*S.wy/ratio):0;
+    var r2=0; dp.forEach(function(p){ var e=slope*p[0]-p[1]; r2+=e*e; });
+    var rms=Math.sqrt(r2/dp.length), mean=dp.reduce(function(a,p){return a+p[1];},0)/dp.length;
+    out.push('<b>功率扫描</b>（'+dp.length+' 点）　实测斜率 '+slope.toFixed(4)+' MHz/mW，理论 '+K1.toFixed(4)
+      +'，<b>幅度比 '+ratio.toFixed(3)+'</b>　RMS 残差 '+rms.toFixed(4)+' MHz（'+(mean>0?(rms/mean*100).toFixed(1):'—')
+      +'%）<br>反推等效束腰 <b>'+(weff*1e6).toFixed(1)+' µm</b>，当前设定 '
+      +Math.sqrt(S.wx*S.wy*1e12).toFixed(1)+' µm（几何平均）');
+  }
+  var dq=parseXY('d-qwp');
+  if(dq.length>=3){
+    var best=null;
+    for(var t0=-45;t0<=45;t0+=0.25){
+      var sn=0,sd=0;
+      dq.forEach(function(p){ var m=Math.abs(Math.sin(2*(p[0]-t0)*Math.PI/180)); sn+=m*p[1]; sd+=m*m; });
+      var A=sd>0?sn/sd:0, r=0;
+      dq.forEach(function(p){ var e=A*Math.abs(Math.sin(2*(p[0]-t0)*Math.PI/180))-p[1]; r+=e*e; });
+      if(!best||r<best.r) best={t0:t0,A:A,r:r};
+    }
+    var rms2=Math.sqrt(best.r/dq.length);
+    var Ath=Math.abs(Kco(S.D,S.wx,S.wy,Math.sin(S.thk))*S.d*S.d*S.eta*S.Plas)/(2*Math.PI)/1e6;
+    var rel=best.A>0?rms2/best.A*100:0;
+    out.push('<b>波片扫描</b>（'+dq.length+' 点）　拟合零点 <b>θ₀ = '+best.t0.toFixed(1)+'°</b>，峰值 '
+      +best.A.toFixed(3)+' MHz，理论峰值 '+Ath.toFixed(3)+' MHz，<b>幅度比 '
+      +(Ath>0?(best.A/Ath).toFixed(3):'—')+'</b>　RMS 残差 '+rms2.toFixed(4)+' MHz（'+rel.toFixed(1)+'%）<br>'
+      +'<span style="color:var(--fg2)">残差 &gt;5% → 形状不符，查偏振或几何；残差小但幅度比偏离 1 → 查光斑与功率标定。</span>');
+  }
+  document.getElementById('fitout').innerHTML=out.length
+    ?'<div class="note g" style="margin:0">'+out.join('<br><br>')+'</div>'
+    :'<p class="cap" style="margin:0">贴入数据后这里给出拟合、残差与反推标定。</p>';
+}
+
+/* ---------- plot toolkit ---------- */
+function cssv(n){ return getComputedStyle(document.body).getPropertyValue(n).trim(); }
+function prep(id){ var cv=document.getElementById(id), dpr=window.devicePixelRatio||1;
+  var w=cv.clientWidth||780, h=parseInt(cv.getAttribute('height'),10);
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr); cv.style.height=h+'px';
+  var g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  return {g:g,W:w,H:h}; }
+function L10(v){ return Math.log(Math.max(v,1e-300))/Math.LN10; }
+function mkLog(a1,a2,b1,b2){ var l0=L10(a1),l1=L10(a2);
+  return function(v){ return b1+(L10(v)-l0)/(l1-l0)*(b2-b1); }; }
+function mkLin(a1,a2,b1,b2){ return function(v){ return b1+(v-a1)/(a2-a1)*(b2-b1); }; }
+function logTicks(a,b){ var o=[],e=Math.floor(L10(a));
+  for(;e<=Math.ceil(L10(b));e++) [1,2,5].forEach(function(m){ var v=m*Math.pow(10,e);
+    if(v>=a*0.999&&v<=b*1.001) o.push({v:v,major:m===1}); }); return o; }
+function linTicks(a,b,n){ var o=[]; for(var i=0;i<=n;i++) o.push({v:a+i*(b-a)/n,major:true}); return o; }
+function fmt(v){ if(v===0) return '0';
+  if(Math.abs(v)>=1000) return parseFloat((v/1000).toPrecision(3))+'k';
+  if(Math.abs(v)>=1) return ''+parseFloat(v.toPrecision(3));
+  if(Math.abs(v)>=0.001) return ''+parseFloat(v.toPrecision(2));
+  return v.toExponential(0); }
+function axes(g,M,W,H,fx,fy,tx,ty,xl,yl,yl2){
+  var cg=cssv('--grid'),c2=cssv('--fg2');
+  g.font='10px ui-monospace,Menlo,monospace';
+  tx.forEach(function(t){ var x=fx(t.v); if(x<M.l-1||x>W-M.r+1) return;
+    g.strokeStyle=cg; g.globalAlpha=t.major?0.7:0.28; g.beginPath();
+    g.moveTo(x,M.t); g.lineTo(x,H-M.b); g.stroke(); g.globalAlpha=1;
+    if(t.major){ g.fillStyle=c2; g.textAlign='center'; g.textBaseline='top'; g.fillText(fmt(t.v),x,H-M.b+5); } });
+  ty.forEach(function(t){ var y=fy(t.v); if(y<M.t-1||y>H-M.b+1) return;
+    g.strokeStyle=cg; g.globalAlpha=t.major?0.7:0.28; g.beginPath();
+    g.moveTo(M.l,y); g.lineTo(W-M.r,y); g.stroke(); g.globalAlpha=1;
+    if(t.major){ g.fillStyle=c2; g.textAlign='right'; g.textBaseline='middle'; g.fillText(fmt(t.v),M.l-6,y); } });
+  g.strokeStyle=cssv('--line'); g.lineWidth=1; g.strokeRect(M.l+0.5,M.t+0.5,W-M.l-M.r-1,H-M.t-M.b-1);
+  g.fillStyle=c2; g.font='11px ui-monospace,Menlo,monospace';
+  g.textAlign='center'; g.textBaseline='top'; g.fillText(xl,(M.l+W-M.r)/2,H-14);
+  g.save(); g.translate(11,(M.t+H-M.b)/2); g.rotate(-Math.PI/2); g.textBaseline='top'; g.fillText(yl,0,0); g.restore();
+  if(yl2){ g.save(); g.translate(W-9,(M.t+H-M.b)/2); g.rotate(Math.PI/2); g.textBaseline='top'; g.fillText(yl2,0,0); g.restore(); } }
+function clip(g,M,W,H,fn){ g.save(); g.beginPath(); g.rect(M.l,M.t,W-M.l-M.r,H-M.t-M.b); g.clip(); fn(); g.restore(); }
+function stampText(){ return 'Δ='+num('v-D')+'MHz w='+num('r-x')+'×'+num('r-y')+'µm S₃='+S.S3.toFixed(2)
+  +' α='+(S.a*180/Math.PI).toFixed(0)+'° η='+num('r-e'); }
+function stamp(g,M,W,H){ g.font='9px ui-monospace,Menlo,monospace'; g.fillStyle=cssv('--fg2');
+  g.globalAlpha=0.7; g.textAlign='right'; g.textBaseline='top';
+  g.fillText(stampText(),W-M.r-6,M.t+5); g.globalAlpha=1; }
+var CM=[[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]];
+function cmap(t){ t=Math.max(0,Math.min(1,t)); var s=t*4,i=Math.min(3,Math.floor(s)),f=s-i,a=CM[i],b=CM[i+1];
+  return [a[0]+(b[0]-a[0])*f|0,a[1]+(b[1]-a[1])*f|0,a[2]+(b[2]-a[2])*f|0]; }
+
+/* chart 1 */
+function drawC1(){
+  var o=prep('c1'),g=o.g,W=o.W,H=o.H,M={l:62,r:64,t:16,b:36};
+  var sl=Math.abs(Kco(S.D,S.wx,S.wy,S.g)*S.d*S.d*S.eta)/(2*Math.PI);
+  var Pmx=Math.max(S.Pmax*1e3*1.3,S.Plas*1e3*1.3,1);
+  var lg=(axmode==='log');
+  var Pmn=lg?Math.max(Pmx/1e4,0.01):0;
+  var fx=lg?mkLog(Pmn,Pmx,M.l,W-M.r):mkLin(0,Pmx,M.l,W-M.r);
+  var tx=lg?logTicks(Pmn,Pmx):linTicks(0,Pmx,5);
+  var top=Math.max(sl*Pmx*1e-3*(1+S.rel),1);
+  var Fmx=lg?Math.pow(10,Math.ceil(L10(top))):top*1.05, Fmn=lg?Fmx/1e5:0;
+  var fy=lg?mkLog(Fmn,Fmx,H-M.b,M.t):mkLin(0,Fmx,H-M.b,M.t);
+  var ty=lg?logTicks(Fmn,Fmx):linTicks(0,Fmx,5);
+  axes(g,M,W,H,fx,fy,tx,ty,'激光输出功率 P_laser (mW)','Ω_R/2π (Hz)',lg?'π/2 时间':'');
+  stamp(g,M,W,H);
+  var acc=cssv('--accent'),c2=cssv('--fg2');
+  clip(g,M,W,H,function(){
+    var p0=lg?Pmn:0,i,P;
+    [0.5,2].forEach(function(m){
+      var s2=Math.abs(Kco(S.D,S.wx*m,S.wy*m,S.g)*S.d*S.d*S.eta)/(2*Math.PI);
+      g.strokeStyle=c2; g.globalAlpha=0.4; g.lineWidth=1; g.beginPath();
+      g.moveTo(fx(lg?p0:0),fy(s2*(lg?p0:0)*1e-3)); g.lineTo(fx(Pmx),fy(s2*Pmx*1e-3)); g.stroke();
+      g.globalAlpha=1; var yl=fy(s2*Pmx*0.6*1e-3);
+      if(yl>M.t+8&&yl<H-M.b-4){ g.fillStyle=c2; g.font='10px ui-monospace,Menlo,monospace';
+        g.textAlign='right'; g.textBaseline='bottom'; g.fillText('×'+m+' 束腰',fx(Pmx*0.6),yl-3); } });
+    var hi=[],lo=[];
+    for(i=0;i<=90;i++){ P=lg?Math.pow(10,L10(p0)+i/90*(L10(Pmx)-L10(p0))):i/90*Pmx;
+      hi.push([fx(P),fy(sl*P*1e-3*(1+S.rel))]); lo.push([fx(P),fy(sl*P*1e-3*(1-S.rel))]); }
+    g.fillStyle=acc; g.globalAlpha=0.16; g.beginPath();
+    hi.forEach(function(p,k){ k?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]); });
+    for(i=lo.length-1;i>=0;i--) g.lineTo(lo[i][0],lo[i][1]);
+    g.closePath(); g.fill(); g.globalAlpha=1;
+    g.strokeStyle=acc; g.lineWidth=2; g.beginPath();
+    for(i=0;i<=90;i++){ P=lg?Math.pow(10,L10(p0)+i/90*(L10(Pmx)-L10(p0))):i/90*Pmx;
+      i?g.lineTo(fx(P),fy(sl*P*1e-3)):g.moveTo(fx(P),fy(sl*P*1e-3)); }
+    g.stroke();
+    var xm=fx(S.Pmax*1e3);
+    if(xm>M.l&&xm<W-M.r){ g.strokeStyle=cssv('--bad'); g.lineWidth=1.4; g.setLineDash([5,4]);
+      g.beginPath(); g.moveTo(xm,M.t); g.lineTo(xm,H-M.b); g.stroke(); g.setLineDash([]);
+      g.fillStyle=cssv('--bad'); g.font='10px ui-monospace,Menlo,monospace';
+      g.textAlign='right'; g.textBaseline='top'; g.fillText('功率上限',xm-4,M.t+4); }
+    parseXY('d-pow').forEach(function(p){ g.fillStyle=cssv('--bad');
+      g.beginPath(); g.arc(fx(p[0]),fy(p[1]*1e6),3.5,0,6.2832); g.fill(); });
+    g.fillStyle=acc; g.beginPath(); g.arc(fx(S.Plas*1e3),fy(Math.abs(S.W)/2/Math.PI),4.5,0,6.2832); g.fill();
+    g.strokeStyle=cssv('--card'); g.lineWidth=1.5; g.stroke();
+  });
+  if(lg){ g.font='10px ui-monospace,Menlo,monospace'; g.fillStyle=cssv('--fg2');
+    logTicks(Fmn,Fmx).forEach(function(t){ if(!t.major) return; var y=fy(t.v);
+      if(y<M.t||y>H-M.b) return; var ns=1/(4*t.v)*1e9;
+      g.textAlign='left'; g.textBaseline='middle';
+      g.fillText(ns>=1000?(ns/1000).toPrecision(2)+'µs':ns.toPrecision(2)+'ns',W-M.r+6,y); }); }
+}
+
+/* chart 2 */
+function drawC2(){
+  var o=prep('c2'),g=o.g,W=o.W,H=o.H,M={l:62,r:18,t:16,b:36};
+  var Dmn=20e6,Dmx=5e10,Pmn=0.1,Pmx=1e4;
+  var fx=mkLog(Dmn/1e6,Dmx/1e6,M.l,W-M.r), fy=mkLog(Pmn,Pmx,H-M.b,M.t);
+  var pw=W-M.l-M.r,ph=H-M.t-M.b,nx=180,ny=110;
+  var off=document.createElement('canvas'); off.width=nx; off.height=ny;
+  var og=off.getContext('2d'),im=og.createImageData(nx,ny),dt=im.data,lo=4,hi=8;
+  for(var j=0;j<ny;j++){
+    var Pl=Math.pow(10,L10(Pmn)+((ny-1-j)/(ny-1))*(L10(Pmx)-L10(Pmn)))*1e-3;
+    for(var i=0;i<nx;i++){
+      var D=Math.pow(10,L10(Dmn)+i/(nx-1)*(L10(Dmx)-L10(Dmn)));
+      var Om=Math.abs(Kco(D,S.wx,S.wy,S.g)*S.d*S.d*S.eta*Pl)/(2*Math.PI);
+      var c=cmap((L10(Om)-lo)/(hi-lo)),k=(j*nx+i)*4;
+      dt[k]=c[0];dt[k+1]=c[1];dt[k+2]=c[2];dt[k+3]=255; } }
+  og.putImageData(im,0,0); g.drawImage(off,M.l,M.t,pw,ph);
+  clip(g,M,W,H,function(){
+    var nm={10000:'10 kHz',100000:'100 kHz',1000000:'1 MHz',10000000:'10 MHz',100000000:'100 MHz'};
+    [1e4,1e5,1e6,1e7,1e8].forEach(function(Om){
+      var pts=[];
+      for(var i=0;i<=160;i++){ var D=Math.pow(10,L10(Dmn)+i/160*(L10(Dmx)-L10(Dmn)));
+        var K=Math.abs(Kco(D,S.wx,S.wy,S.g)*S.d*S.d*S.eta);
+        if(!(K>0)){ pts.push(null); continue; }
+        var Pm=(2*Math.PI*Om)/K*1e3;
+        pts.push((Pm<Pmn*0.4||Pm>Pmx*2.5)?null:[fx(D/1e6),fy(Pm)]); }
+      g.strokeStyle='rgba(255,255,255,0.9)'; g.lineWidth=1.3; g.setLineDash([5,4]);
+      g.beginPath(); var pen=false;
+      pts.forEach(function(p){ if(!p){pen=false;return;} pen?g.lineTo(p[0],p[1]):(g.moveTo(p[0],p[1]),pen=true); });
+      g.stroke(); g.setLineDash([]);
+      var lb=pts.filter(function(p){ return p&&p[0]>M.l+40&&p[0]<W-M.r-30&&p[1]>M.t+16&&p[1]<H-M.b-8; });
+      if(lb.length){ var p=lb[Math.floor(lb.length*0.7)];
+        g.font='600 10px ui-monospace,Menlo,monospace'; var tw=g.measureText(nm[Om]).width;
+        g.fillStyle='rgba(0,0,0,0.55)'; g.fillRect(p[0]-tw/2-3,p[1]-14,tw+6,13);
+        g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='bottom'; g.fillText(nm[Om],p[0],p[1]-2); } });
+    [1e-3,1e-4,1e-5].forEach(function(E){
+      var pts=[];
+      for(var i=0;i<=160;i++){ var D=Math.pow(10,L10(Dmn)+i/160*(L10(Dmx)-L10(Dmn)));
+        var a=1e3,b=1e9,mid;
+        for(var k=0;k<40;k++){ mid=Math.sqrt(a*b); if(totErr(D,2*Math.PI*mid)>E) b=mid; else a=mid; }
+        var Omx=Math.sqrt(a*b);
+        if(totErr(D,2*Math.PI*Omx)>E*1.5){ pts.push(null); continue; }
+        var K=Math.abs(Kco(D,S.wx,S.wy,S.g)*S.d*S.d*S.eta);
+        var Pm=K>0?(2*Math.PI*Omx)/K*1e3:0;
+        pts.push((Pm<Pmn*0.4||Pm>Pmx*2.5)?null:[fx(D/1e6),fy(Pm)]); }
+      g.strokeStyle='rgba(255,255,255,0.95)'; g.lineWidth=1.7;
+      g.beginPath(); var pen=false;
+      pts.forEach(function(p){ if(!p){pen=false;return;} pen?g.lineTo(p[0],p[1]):(g.moveTo(p[0],p[1]),pen=true); });
+      g.stroke();
+      var lb=pts.filter(function(p){ return p&&p[0]>M.l+30&&p[0]<W-M.r-40&&p[1]>M.t+30&&p[1]<H-M.b-8; });
+      if(lb.length){ var p=lb[Math.floor(lb.length*0.35)], s=E.toExponential(0).replace('e-','e−');
+        g.font='600 10px ui-monospace,Menlo,monospace'; var tw=g.measureText(s).width;
+        g.fillStyle='rgba(0,0,0,0.6)'; g.fillRect(p[0]-tw/2-3,p[1]+2,tw+6,13);
+        g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='top'; g.fillText(s,p[0],p[1]+3); } });
+    var ym=fy(S.Pmax*1e3);
+    if(ym>M.t&&ym<H-M.b){ g.fillStyle='rgba(0,0,0,0.45)'; g.fillRect(M.l,M.t,pw,ym-M.t);
+      g.strokeStyle=cssv('--bad'); g.lineWidth=1.6; g.beginPath();
+      g.moveTo(M.l,ym); g.lineTo(W-M.r,ym); g.stroke();
+      g.fillStyle='#fff'; g.font='600 10px ui-monospace,Menlo,monospace';
+      g.textAlign='left'; g.textBaseline='bottom'; g.fillText('可用功率上限',M.l+8,ym-4); }
+    if(S.D>Dmn&&S.D<Dmx&&S.Plas*1e3>Pmn&&S.Plas*1e3<Pmx){
+      var x=fx(S.D/1e6),y=fy(S.Plas*1e3);
+      g.strokeStyle='#fff'; g.lineWidth=2; g.beginPath(); g.arc(x,y,6,0,6.2832); g.stroke();
+      g.fillStyle='#fff'; g.beginPath(); g.arc(x,y,2.2,0,6.2832); g.fill(); } });
+  g.font='10px ui-monospace,Menlo,monospace'; g.fillStyle=cssv('--fg2');
+  logTicks(Dmn/1e6,Dmx/1e6).forEach(function(t){ if(!t.major) return; var x=fx(t.v);
+    if(x<M.l||x>W-M.r) return; g.textAlign='center'; g.textBaseline='top'; g.fillText(fmt(t.v),x,H-M.b+5); });
+  logTicks(Pmn,Pmx).forEach(function(t){ if(!t.major) return; var y=fy(t.v);
+    if(y<M.t||y>H-M.b) return; g.textAlign='right'; g.textBaseline='middle'; g.fillText(fmt(t.v),M.l-6,y); });
+  g.strokeStyle=cssv('--line'); g.lineWidth=1; g.strokeRect(M.l+0.5,M.t+0.5,pw-1,ph-1);
+  g.fillStyle=cssv('--fg2'); g.font='11px ui-monospace,Menlo,monospace';
+  g.textAlign='center'; g.textBaseline='top';
+  g.fillText('失谐 Δ/2π (MHz，蓝失谐)',(M.l+W-M.r)/2,H-14);
+  g.save(); g.translate(11,(M.t+H-M.b)/2); g.rotate(-Math.PI/2);
+  g.textBaseline='top'; g.fillText('激光输出功率 (mW)',0,0); g.restore();
+  stamp(g,M,W,H);
+}
+
+/* chart 3 */
+function drawC3(){
+  var o=prep('c3'),g=o.g,W=o.W,H=o.H,M={l:62,r:18,t:16,b:36};
+  var t0=(pol==='qwp')?num('r-t0'):0;
+  var base=Math.abs(Kco(S.D,S.wx,S.wy,Math.sin(S.thk))*S.d*S.d*S.eta*S.Plas)/(2*Math.PI)/1e6;
+  var data=parseXY('d-qwp'), top=base*(1+S.rel);
+  data.forEach(function(p){ top=Math.max(top,p[1]); });
+  top=top>0?top*1.15:1;
+  var fx=mkLin(0,180,M.l,W-M.r), fy=mkLin(0,top,H-M.b,M.t);
+  axes(g,M,W,H,fx,fy,linTicks(0,180,6),linTicks(0,top,5),'λ/4 波片角度 θ (°)','Ω_R/2π (MHz)');
+  stamp(g,M,W,H);
+  var acc=cssv('--accent');
+  clip(g,M,W,H,function(){
+    var hi=[],lo=[],i,v;
+    for(i=0;i<=180;i++){ v=base*Math.abs(Math.sin(2*(i-t0)*Math.PI/180));
+      hi.push([fx(i),fy(v*(1+S.rel))]); lo.push([fx(i),fy(v*(1-S.rel))]); }
+    g.fillStyle=acc; g.globalAlpha=0.16; g.beginPath();
+    hi.forEach(function(p,k){ k?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]); });
+    for(i=lo.length-1;i>=0;i--) g.lineTo(lo[i][0],lo[i][1]);
+    g.closePath(); g.fill(); g.globalAlpha=1;
+    g.strokeStyle=acc; g.lineWidth=2; g.beginPath();
+    for(i=0;i<=180;i++){ v=base*Math.abs(Math.sin(2*(i-t0)*Math.PI/180));
+      i?g.lineTo(fx(i),fy(v)):g.moveTo(fx(i),fy(v)); }
+    g.stroke();
+    data.forEach(function(p){ g.fillStyle=cssv('--bad');
+      g.beginPath(); g.arc(fx(p[0]),fy(p[1]),3.5,0,6.2832); g.fill(); });
+    var thc=(pol==='qwp')?num('r-th'):(t0+Math.asin(Math.min(1,Math.abs(S.S3)))*90/Math.PI);
+    var yc=base*Math.abs(Math.sin(2*(thc-t0)*Math.PI/180));
+    g.fillStyle=acc; g.beginPath(); g.arc(fx(thc),fy(yc),4.5,0,6.2832); g.fill();
+    g.strokeStyle=cssv('--card'); g.lineWidth=1.5; g.stroke();
+    g.strokeStyle=cssv('--fg2'); g.globalAlpha=0.5; g.setLineDash([2,3]);
+    g.beginPath(); g.moveTo(fx(thc),fy(yc)); g.lineTo(fx(thc),H-M.b); g.stroke();
+    g.setLineDash([]); g.globalAlpha=1;
+  });
+}
+
+function drawAll(){ try{ drawC1(); drawC2(); drawC3(); }catch(e){ console.error(e); } }
+
+function exportCSV(){
+  var rows=['# yb-toolkit raman-qubit  '+YBV.info.short, '# '+YBURL.link(),
+    '# '+stampText()+'  Omega_R='+(Math.abs(S.W)/2/Math.PI/1e6).toFixed(4)
+    +'MHz  err_tot='+S.eTOT.toExponential(3),
+    'P_laser_mW,Omega_MHz,Omega_lo,Omega_hi'];
+  var sl=Math.abs(Kco(S.D,S.wx,S.wy,S.g)*S.d*S.d*S.eta)/(2*Math.PI);
+  for(var i=0;i<=50;i++){ var P=S.Pmax*1e3*i/50, v=sl*P*1e-3/1e6;
+    rows.push([P.toFixed(3),v.toFixed(6),(v*(1-S.rel)).toFixed(6),(v*(1+S.rel)).toFixed(6)].join(',')); }
+  rows.push('','theta_deg,Omega_MHz');
+  var t0=(pol==='qwp')?num('r-t0'):0;
+  var base=Math.abs(Kco(S.D,S.wx,S.wy,Math.sin(S.thk))*S.d*S.d*S.eta*S.Plas)/(2*Math.PI)/1e6;
+  for(var t=0;t<=180;t+=2) rows.push(t+','+(base*Math.abs(Math.sin(2*(t-t0)*Math.PI/180))).toFixed(6));
+  var b=new Blob([rows.join('\n')],{type:'text/csv'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download='yb171_raman_v4.csv'; a.click();
+}
+function copyStamp(){
+  var t=stampText()+' | Ω_R/2π='+(Math.abs(S.W)/2/Math.PI/1e6).toFixed(3)+'±'
+    +(Math.abs(S.W)/2/Math.PI/1e6*S.rel).toFixed(3)+' MHz | π/2='
+    +(Math.PI/2/Math.abs(S.W)*1e9).toFixed(0)+' ns | ε='+S.eTOT.toExponential(2);
+  if(navigator.clipboard) navigator.clipboard.writeText(t);
+}
+window.addEventListener('resize',drawAll);
+if(window.matchMedia) try{ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){ calc(); }); }catch(e){}
+/* ---- URL 状态 ---- */
+function loadURL(){
+  var st=YBURL.read(), map={D:'v-D',P:'v-p',f:'v-f',d:'v-d'};
+  for(var k in map){ var e=st[k];
+    if(e&&e.value!==null) document.getElementById(map[k]).value=e.value; }
+  var sl={s3:'r-s3',a:'r-a',wx:'r-x',wy:'r-y',k:'r-k',B:'r-b',eta:'r-e'};
+  for(var j in sl){ var e2=st[j];
+    if(e2&&e2.value!==null){ var el=document.getElementById(sl[j]); if(el) el.value=e2.value; } }
+}
+function saveURL(){
+  YBURL.write({
+    D:{value:num('v-D'),unit:'MHz'},
+    P:{value:num('v-p'),unit:'mW'},
+    d:{value:num('v-d'),unit:'ea0'},
+    s3:{value:parseFloat(S.S3.toFixed(4)),unit:''},
+    a:{value:num('r-a'),unit:''},
+    wx:{value:num('r-x'),unit:''},
+    wy:{value:num('r-y'),unit:''},
+    k:{value:num('r-k'),unit:''},
+    B:{value:num('r-b'),unit:''}
+  });
+}
+loadURL();
+pick('f');
+</script>
+</div></body></html>

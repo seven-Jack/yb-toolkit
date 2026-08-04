@@ -1,0 +1,28 @@
+{
+  "_comment": [
+    "本组实测标定值。改动请写明日期与方法，git log 即是台账。",
+    "所有 null 表示尚未标定 —— 工具会用文献默认值并给出提示。"
+  ],
+  "beam": {
+    "waist_x_m": null,
+    "waist_y_m": null,
+    "method": null,
+    "date": null,
+    "note": "1/e² 强度半径。刀口法或相机拟合，务必区分半径与直径"
+  },
+  "optical_path": {
+    "transmission_eta": null,
+    "date": null,
+    "note": "激光器出口到原子处的总透过率，含光纤耦合、AOM 衍射效率、窗片与物镜"
+  },
+  "polarization": {
+    "qwp_zero_theta0_deg": null,
+    "beam_field_angle_kB_deg": null,
+    "date": null,
+    "note": "θ₀ 由波片扫描拟合；Θ_kB 由光路几何测量。标定前工具的绝对幅度不可作定量预测"
+  },
+  "measured": {
+    "rabi_scans": [],
+    "note": "格式: {date, power_W, waist_m, detuning_Hz, rabi_Hz, operator, comment}"
+  }
+}

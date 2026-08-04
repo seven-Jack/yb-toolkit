@@ -1,0 +1,31 @@
+name: tests
+
+# 公式一改，两套实现同时校验。失败即阻止合并与部署。
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: JS 实现校验
+        run: node tests/bench.js
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python 实现校验
+        run: python3 tests/bench.py
+
+      - name: 检查两套实现的常数是否一致
+        run: node tests/crosscheck.js
+
+      - name: 模块挂载烟雾测试
+        run: node tests/smoke.js

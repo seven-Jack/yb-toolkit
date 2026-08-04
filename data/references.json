@@ -1,0 +1,36 @@
+{
+  "_comment": "文献值与出处。工具的默认参数从这里来，不硬编码。",
+  "papers": [
+    {
+      "id": "jenkins2022",
+      "cite": "A. Jenkins, J. W. Lis, A. Senoo, W. F. McGrew, A. M. Kaufman, Ytterbium Nuclear-Spin Qubits in an Optical Tweezer Array, PRX 12, 021027 (2022)",
+      "erratum": "PRX 13, 029902 (2023) — 修正拉曼偏振依赖，本工具据此改用 sin φ_HV",
+      "url": "https://doi.org/10.1103/PhysRevX.12.021027",
+      "values": {
+        "Omega_R_measured_Hz": 1.77e6,
+        "pi2_time_s": 170e-9,
+        "power_W": 0.040,
+        "detuning_Hz": -180e6,
+        "waist_m": 365e-6,
+        "T2star_s": 3.7,
+        "T2_s": 7.9,
+        "differential_light_shift_Hz": 55500,
+        "gate_error_pi2": 5.2e-3
+      }
+    },
+    {
+      "id": "jones2023",
+      "cite": "M. Jones, A. van Kann, J. McFerran, Appl. Opt. 62, 3932 (2023)",
+      "values": { "A_3P1_Hz": 3957.833e6, "A_uncertainty_Hz": 28e3 }
+    }
+  ],
+  "cross_validation": {
+    "rydcalc_6s6p_3P1": {
+      "angular_ok": true,
+      "note": "D_π/D_σ = √2 精确成立，波长 555.802 nm 正确",
+      "absolute_ok": false,
+      "discrepancy_factor": 7.95e4,
+      "conclusion": "低激发双价电子关联态的绝对偶极矩必须走线宽标定；里德堡态(n~65)通常无此问题但建议独立校验"
+    }
+  }
+}
