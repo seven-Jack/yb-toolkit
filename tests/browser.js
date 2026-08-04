@@ -298,6 +298,41 @@ async function main() {
   await page.waitForTimeout(400);
   await shot(page, '12-rabi-3d.png');
 
+  /* ---------- 3c. 3a-2a：raman-qubit 功率–失谐设计图（折叠区） ---------- */
+  section('3c. raman-qubit 功率–失谐设计图');
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.selectOption('#sel-top', 'raman-qubit');
+  await page.waitForTimeout(600);
+  // 展开设计图折叠区 exp3
+  await page.evaluate(() => {
+    const d = document.querySelector('#host-top [id$="_exp3"]');
+    if (d) { d.open = true; d.dispatchEvent(new Event('toggle')); }
+  });
+  await page.waitForTimeout(800);
+  const dm = await page.evaluate(() => {
+    const cv = document.querySelector('#host-top [id$="_c2"]');
+    if (!cv) return { found: false };
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] !== 0) n++;
+    return { found: true, opaque: n };
+  });
+  dm.found && dm.opaque > 1000
+    ? ok('设计图画出内容（c2 不透明像素 ' + dm.opaque + '）')
+    : fail('设计图未画出', JSON.stringify(dm));
+  // 紧凑模式下收起（约束①）
+  await page.evaluate(() => { window.YBPanes.setSplit(15); });
+  await page.waitForTimeout(400);
+  const dmCompact = await page.evaluate(() => {
+    const d = document.querySelector('#host-top [id$="_exp3"]');
+    return { closed: !d.open };
+  });
+  dmCompact.closed ? ok('紧凑模式收起设计图折叠区')
+                   : fail('紧凑未收起设计图', JSON.stringify(dmCompact));
+  await page.evaluate(() => { window.YBPanes.setSplit(50); });
+  await page.waitForTimeout(400);
+  await shot(page, '13-raman-designmap.png');
+
   /* ---------- 4. fetch 数据库两路径 ---------- */
   section('4. fetch：外壳与独立页两条相对路径');
   // 全新加载外壳（避免上一节 Sr 残留），确认默认 Yb 与数据加载

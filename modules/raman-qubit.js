@@ -98,6 +98,12 @@
           '<div class="mc"><p class="k">Z 轴进动</p><p class="v" id="' + i('m-pr') + '">—</p></div>' +
           '<div class="mc"><p class="k">d_red</p><p class="v" id="' + i('m-d') + '">—</p></div>' +
         '</div>' +
+      '</details>' +
+
+      '<details class="adv" id="' + i('exp3') + '"><summary>功率–失谐设计图</summary>' +
+        '<div style="margin-top:12px"><canvas id="' + i('c2') + '" height="360"></canvas></div>' +
+        '<p class="cap">色块为 Ω_R，白色虚线为等 Ω_R，白色实线为等总误差。' +
+        '竖线下方灰区为可用功率上限。十字为当前工作点。</p>' +
       '</details>';
     },
 
@@ -135,6 +141,14 @@
         V.comp = $('c-comp').checked;
         V.eTOT = V.eSC + (V.comp ? 0 : V.eLS) + V.eIN;
         V.hf = YB.hfFactor(V.Dh);
+        /* 耦合系数一律由 shared/physics.js 的 ramanOmega 反推，不在此另写公式（硬规则②）。
+         * ramanOmega(d,P,wx,wy,D,geom) 含 geom=|S3|·sinΘ 因子，正是独立页 Kco 的 g。
+         * ram(P_eff, g)：给有效功率（已含 η）与几何因子 g，返回 Ω_R/2π (Hz)。 */
+        V.ram = function (P_eff, g) {
+          return Math.abs(YB.ramanOmega(V.d, P_eff, s.beam.wx, s.beam.wy, V.Dh, g)) / (2 * Math.PI);
+        };
+        V.eta = s.beam.eta; V.Plas = s.beam.P_laser; V.D = s.raman.detuning_Hz;
+        V.thk = s.beam.theta_kB_deg * D2R;
       }
 
       function paint() {
@@ -271,9 +285,77 @@
         g.fillText('π/2 门误差', 0, 0); g.restore();
       }
 
+      /* ---- 功率–失谐设计图（折叠区 exp3） ---- */
+      function drawC2(cs) {
+        if (!$('exp3').open) return;
+        var o = P.prep(c.id('c2')), g = o.g, W = o.W, H = o.H, M = { l: 62, r: 18, t: 16, b: 36 };
+        var s = S.state, Dmn = 20e6, Dmx = 5e10, Pmn = 0.1, Pmx = 1e4;
+        var fx = P.scaleLog(Dmn / 1e6, Dmx / 1e6, M.l, W - M.r), fy = P.scaleLog(Pmn, Pmx, H - M.b, M.t);
+        var pw = W - M.l - M.r, ph = H - M.t - M.b, nx = 180, ny = 110;
+        var b = P.buffer(nx, ny), dt = b.data, lo = 4, hi = 8;
+        var k, i, j;
+        for (j = 0; j < ny; j++) {
+          var Pl = Math.pow(10, P.L10(Pmn) + ((ny - 1 - j) / (ny - 1)) * (P.L10(Pmx) - P.L10(Pmn))) * 1e-3;
+          for (i = 0; i < nx; i++) {
+            var D = Math.pow(10, P.L10(Dmn) + i / (nx - 1) * (P.L10(Dmx) - P.L10(Dmn)));
+            var Om = Math.abs(YB.ramanOmega(V.d, s.beam.eta * Pl, s.beam.wx, s.beam.wy, D, V.geom)) / (2 * Math.PI);
+            var t = (P.L10(Om) - lo) / (hi - lo);
+            t = t < 0 ? 0 : t > 1 ? 1 : t; var q = (t * 255 | 0) * 3;
+            var k2 = (j * nx + i) * 4;
+            dt[k2] = P.PLASMA[q]; dt[k2 + 1] = P.PLASMA[q + 1]; dt[k2 + 2] = P.PLASMA[q + 2]; dt[k2 + 3] = 255;
+          } }
+        P.blit(g, nx, ny, M.l, M.t, pw, ph);
+        P.clip(g, M, W, H, function () {
+          var nm = { 10000: '10 kHz', 100000: '100 kHz', 1000000: '1 MHz', 10000000: '10 MHz', 100000000: '100 MHz' };
+          [1e4, 1e5, 1e6, 1e7, 1e8].forEach(function (Om) {
+            var pts = [];
+            for (var i2 = 0; i2 <= 160; i2++) {
+              var D2 = Math.pow(10, P.L10(Dmn) + i2 / 160 * (P.L10(Dmx) - P.L10(Dmn)));
+              /* 反推等 Ω_R 线所需功率：Ω = K·d²·η·P → P = Ω/(K·d²·η)。
+                 K·d²·η 由 ram(η 有效功率) 给出（不再单独写 Kco 公式）。 */
+              var Keff = Math.abs(YB.ramanOmega(V.d, s.beam.eta, s.beam.wx, s.beam.wy, D2, V.geom)) / (2 * Math.PI);
+              var Pw = Keff > 0 ? Om / Keff * 1e3 : 0;
+              pts.push((Pw < Pmn * 0.4 || Pw > Pmx * 2.5) ? null : [fx(D2 / 1e6), fy(Pw)]);
+            }
+            g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.3; g.setLineDash([5, 4]);
+            g.beginPath(); var pen = false;
+            pts.forEach(function (p) { if (!p) { pen = false; return; } pen ? g.lineTo(p[0], p[1]) : (g.moveTo(p[0], p[1]), pen = true); });
+            g.stroke(); g.setLineDash([]);
+            var lb = pts.filter(function (p) { return p && p[0] > M.l + 40 && p[0] < W - M.r - 30 && p[1] > M.t + 16 && p[1] < H - M.b - 8; });
+            if (lb.length) { var pp = lb[Math.floor(lb.length * 0.7)], txt = nm[Om];
+              g.font = '600 10px ui-monospace,Menlo,monospace'; var tw = g.measureText(txt).width;
+              g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(pp[0] - tw / 2 - 3, pp[1] - 14, tw + 6, 13);
+              g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.fillText(txt, pp[0], pp[1] - 2); }
+          });
+          var ym = fy(s.limits.Pmax * 1e3);
+          if (ym > M.t && ym < H - M.b) {
+            g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(M.l, M.t, pw, ym - M.t);
+            g.strokeStyle = P.color('--bad'); g.lineWidth = 1.6; g.beginPath();
+            g.moveTo(M.l, ym); g.lineTo(W - M.r, ym); g.stroke();
+            g.fillStyle = '#fff'; g.font = '600 10px ui-monospace,Menlo,monospace';
+            g.textAlign = 'left'; g.textBaseline = 'bottom'; g.fillText('可用功率上限', M.l + 8, ym - 4); }
+          if (V.D > Dmn && V.D < Dmx && V.Plas * 1e3 > Pmn && V.Plas * 1e3 < Pmx) {
+            var x = fx(V.D / 1e6), y = fy(V.Plas * 1e3);
+            g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6, 0, 6.2832); g.stroke();
+            g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 2.2, 0, 6.2832); g.fill(); }
+        });
+        var c2f = P.color('--fg2');
+        g.font = '10px ui-monospace,Menlo,monospace'; g.fillStyle = c2f;
+        P.ticksLog(Dmn / 1e6, Dmx / 1e6).forEach(function (t) { if (!t.major) return; var x = fx(t.v);
+          if (x < M.l || x > W - M.r) return; g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(P.fmt(t.v), x, H - M.b + 5); });
+        P.ticksLog(Pmn, Pmx).forEach(function (t) { if (!t.major) return; var y = fy(t.v);
+          if (y < M.t || y > H - M.b) return; g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText(P.fmt(t.v), M.l - 6, y); });
+        g.strokeStyle = P.color('--line'); g.lineWidth = 1; g.strokeRect(M.l + 0.5, M.t + 0.5, pw - 1, ph - 1);
+        g.fillStyle = c2f; g.font = '11px ui-monospace,Menlo,monospace';
+        g.textAlign = 'center'; g.textBaseline = 'top';
+        g.fillText('失谐 Δ/2π (MHz，蓝失谐)', (M.l + W - M.r) / 2, H - 14);
+        g.save(); g.translate(11, (M.t + H - M.b) / 2); g.rotate(-Math.PI / 2);
+        g.textBaseline = 'top'; g.fillText('激光输出功率 (mW)', 0, 0); g.restore();
+      }
+
       var sched = new P.Scheduler(
-        function () { compute(); paint(); drawLevel(); drawC1(true); },
-        function () { P.measure([c.id('c1')]); compute(); paint(); drawLevel(); drawC1(false); }, 170);
+        function () { compute(); paint(); drawLevel(); drawC1(true); drawC2(true); },
+        function () { P.measure([c.id('c1'), c.id('c2')]); compute(); paint(); drawLevel(); drawC1(false); drawC2(false); }, 170);
 
       /* ---- 事件 ---- */
       function push() {
@@ -299,17 +381,18 @@
         b.onclick = function () {
           c.set({ 'raman.detuning_Hz': parseFloat(b.dataset.d) }); fill(); sched.flush(); };
       });
-      ['exp1', 'exp2'].forEach(function (k) {
-        $(k).addEventListener('toggle', function () { P.measure([c.id('c1')]); sched.flush(); }); });
+      ['exp1', 'exp2', 'exp3'].forEach(function (k) {
+        $(k).addEventListener('toggle', function () { P.measure([c.id('c1'), c.id('c2')]); sched.flush(); }); });
 
-      fill(); P.measure([c.id('c1')]); sched.flush();
+      fill(); P.measure([c.id('c1'), c.id('c2')]); sched.flush();
 
       return {
         update: function () { fill(); sched.flush(); },
         setCompact: function (on) {
           if (on === compact) return;
           compact = on;
-          if (on) { $('exp1').open = false; $('exp2').open = false; }
+          if (on) { $('exp1').open = false; $('exp2').open = false;
+            $('exp3').open = false; }
           $('lvl').style.display = on ? 'none' : 'block';
           sched.flush();
         },
