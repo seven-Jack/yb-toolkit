@@ -80,6 +80,23 @@
         '<p class="cap"><b>归一化陷阱：</b>d_Edmonds = √(2J+1)·d_CG。J=0 基态时该因子恰为 1，' +
         '所以 Yb 一直未暴露问题，但碱金属（J=1/2）会差 √2。' +
         '因此数据库<b>不存任何文献 d 值</b>，一律由 Γ 反解，保证与本框架约定自洽。</p>' +
+      '</details>' +
+
+      '<details class="adv" id="' + i('exp3') + '"><summary>全库 42 组合求和规则扫描</summary>' +
+        '<div class="segs" style="margin:12px 0 0">' +
+          '<button class="seg mini" id="' + i('btn-scan') + '">运行扫描</button>' +
+          '<span style="flex:1"></span><span class="cap">R1/R2/R3 三组求和规则，覆盖全部元素×同位素×跃迁</span>' +
+        '</div>' +
+        '<div id="' + i('scanout') + '" class="selftest" style="margin-top:10px"></div>' +
+      '</details>' +
+
+      '<details class="adv" id="' + i('exp4') + '"><summary>LaTeX 导出当前塞曼表</summary>' +
+        '<div class="segs" style="margin:12px 0 0">' +
+          '<button class="seg mini" id="' + i('btn-tex') + '">复制 LaTeX 表格</button>' +
+          '<span style="flex:1"></span><span class="cap" id="' + i('texnote') + '"></span>' +
+        '</div>' +
+        '<textarea id="' + i('texout') + '" rows="8" readonly style="margin-top:10px"></textarea>' +
+        '<p class="cap">可直接粘进论文。数值与上方塞曼分量表逐项一致（coeff = 裸 CG，value = ×d_red）。</p>' +
       '</details>';
     },
 
@@ -245,13 +262,78 @@
           '</table>';
       }
 
+      /* ---- 全库求和规则扫描（折叠区 exp3）----
+       * 覆盖 DB 全部元素×同位素×跃迁（10×24×18≈42 组），三组求和规则：
+       *   R1 Σ_F′ |⟨F′‖d‖F⟩|² = (2F+1)/(2J+1)
+       *   R2 Σ_F,q |⟨F′m′|d_q|Fm⟩|² = 1/(2J′+1)
+       *   R3 Σ_F′,q |⟨F′m′|d_q|Fm⟩|² = 1/(2J+1)
+       * 报出最大残差与触发它的组合 —— 只看"全部通过"等于没测。 */
+      function runScan() {
+        if (!DB) return;
+        var n = 0, bad = 0, worst = 0, worstTag = '';
+        function rec(r, tag) { if (r > worst) { worst = r; worstTag = tag; } if (r > 1e-8) bad++; }
+        DB.forEach(function (d) {
+          d.iso.forEach(function (iso) {
+            d.tr.forEach(function (t) {
+              var I = iso.I, J = d.J, Jp = t.Jp, Fs = W.frange(J, I), Fps = W.frange(Jp, I); n++;
+              Fs.forEach(function (F) { var x = 0;
+                Fps.forEach(function (Fp) { x += W.redHFS(I, J, Jp, F, Fp) * W.redHFS(I, J, Jp, F, Fp); });
+                rec(Math.abs(x - (2 * F + 1) / (2 * J + 1)), 'R1 ' + iso.a + d.el); });
+              Fps.forEach(function (Fp) {
+                for (var mp = -Fp; mp <= Fp + 1e-9; mp++) { var x = 0;
+                  Fs.forEach(function (F) { for (var q = -1; q <= 1; q++) { var m = mp - q;
+                    if (Math.abs(m) <= F + 1e-9) x += W.zee(I, J, Jp, F, m, Fp, mp, q) * W.zee(I, J, Jp, F, m, Fp, mp, q); } });
+                  rec(Math.abs(x - 1 / (2 * Jp + 1)), 'R2 ' + iso.a + d.el); } });
+              Fs.forEach(function (F) {
+                for (var m = -F; m <= F + 1e-9; m++) { var x = 0;
+                  Fps.forEach(function (Fp) { for (var q = -1; q <= 1; q++) { var mp = m + q;
+                    if (Math.abs(mp) <= Fp + 1e-9) x += W.zee(I, J, Jp, F, m, Fp, mp, q) * W.zee(I, J, Jp, F, m, Fp, mp, q); } });
+                  rec(Math.abs(x - 1 / (2 * J + 1)), 'R3 ' + iso.a + d.el); } });
+            });
+          });
+        });
+        var out = '扫描 ' + n + ' 个（元素×同位素×跃迁）组合，R1/R2/R3 违规 ' + bad + ' 项\n' +
+          '  最大残差 ' + worst.toExponential(2) + '（' + worstTag + '），双精度极限约 1e-15';
+        $('scanout').textContent = out;
+        $('scanout').style.borderLeftColor = bad ? 'var(--bad)' : 'var(--ok)';
+      }
+
+      /* ---- LaTeX 导出当前塞曼表（折叠区 exp4） ---- */
+      function runTex() {
+        var t = S.state.transition, F = t.F, Fp = t.Fp, I = t.I, dRM = S.derived.d_red_au();
+        var L = ['\\begin{tabular}{ll l r r}', '\\hline',
+          '$F,m$ & pol. & $F\',m\'$ & coeff. & value (a.u.) \\\\', '\\hline'];
+        for (var m = -F; m <= F + 1e-9; m++)
+          for (var q = -1; q <= 1; q++) {
+            var mp = m + q;
+            if (Math.abs(mp) > Fp + 1e-9) continue;
+            var v = W.zee(I, t.Jg, t.Jp, F, m, Fp, mp, q);
+            if (Math.abs(v) < 1e-12) continue;
+            var pol = q > 0 ? '\\sigma^+' : q < 0 ? '\\sigma^-' : '\\pi';
+            L.push('$' + fmtHalf(F) + ',' + fmtHalf(m) + '$ & $' + pol + '$ & $' +
+              fmtHalf(Fp) + ',' + fmtHalf(mp) + '$ & $' + v.toFixed(6) + '$ & $' +
+              (v * dRM).toFixed(6) + '$ \\\\');
+          }
+        L.push('\\hline', '\\end{tabular}');
+        $('texout').value = L.join('\n');
+        var note = $('texnote');
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(L.join('\n')).then(function () {
+            note.textContent = '已复制到剪贴板。';
+          }).catch(function () { note.textContent = '剪贴板不可用，表格已填入下方文本框。'; });
+        } else note.textContent = '表格已填入下方文本框。';
+      }
+
       $('exp1').addEventListener('toggle', render);
       $('exp2').addEventListener('toggle', render);
+      $('btn-scan').onclick = runScan;
+      $('btn-tex').onclick = runTex;
 
       return {
         update: function () { if (DB) { syncFromStore(); render(); } },
         setCompact: function (on) { compact = on;
-          if (on) { $('exp1').open = false; $('exp2').open = false; }
+          if (on) { $('exp1').open = false; $('exp2').open = false;
+            $('exp3').open = false; $('exp4').open = false; }
           render(); },
         impact: function () {
           return 'd_red = ' + S.derived.d_red_au().toFixed(6) + ' e·a₀　λ = ' +

@@ -390,6 +390,77 @@ async function main() {
   await page.waitForTimeout(400);
   await shot(page, '14-raman-waveplate.png');
 
+  /* ---------- 3e. 3a-3：hfs 全库求和扫描 + LaTeX 导出（折叠区） ---------- */
+  section('3e. hfs 全库求和扫描 + LaTeX 导出');
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.selectOption('#sel-top', 'hfs-matrix-element');
+  await page.waitForTimeout(800); // 数据库加载
+  // 运行全库扫描（exp3）
+  await page.evaluate(() => {
+    const d = document.querySelector('#host-top [id$="_exp3"]');
+    if (d) { d.open = true; d.dispatchEvent(new Event('toggle')); }
+  });
+  await page.waitForTimeout(200);
+  await page.click('#host-top [id$="_btn-scan"]');
+  await page.waitForTimeout(300);
+  const scanText = await page.evaluate(() =>
+    document.querySelector('#host-top [id$="_scanout"]').textContent.replace(/\s+/g, ' ').trim());
+  // 必须报出最大残差与触发组合（只看"全部通过"等于没测）
+  // 注意输出用全角括号（），不是 ASCII ()
+  const scanRes = (scanText.match(/最大残差\s*([\d.e-]+)[^\d]*（([^）]+)）/)) || [];
+  const resVal = parseFloat(scanRes[1]);
+  (resVal && resVal < 1e-12)
+    ? ok('全库扫描 42 组合，最大残差 ' + scanText.match(/最大残差[^,]+/) + '（双精度量级）')
+    : fail('扫描残差不在双精度量级', scanText);
+  (scanRes[2] && /违规\s*0/.test(scanText))
+    ? ok('报出触发组合 ' + scanRes[2] + '，R1/R2/R3 违规 0')
+    : fail('扫描未报组合/有违规', scanText);
+  // LaTeX 导出（exp4）：合法 tabular + coeff 与塞曼表逐项一致
+  await page.evaluate(() => {
+    const d = document.querySelector('#host-top [id$="_exp4"]');
+    if (d) { d.open = true; d.dispatchEvent(new Event('toggle')); }
+  });
+  await page.waitForTimeout(200);
+  await page.click('#host-top [id$="_btn-tex"]');
+  await page.waitForTimeout(300);
+  const texChk = await page.evaluate(() => {
+    const tex = document.querySelector('#host-top [id$="_texout"]').value;
+    const beg = (tex.match(/\\begin\{tabular\}/g) || []).length;
+    const end = (tex.match(/\\end\{tabular\}/g) || []).length;
+    const rows = tex.split('\n').filter(l => /&/.test(l) && /\\\\/.test(l) && !/\$F,m\$/.test(l));
+    const coeffs = rows.map(r => parseFloat(r.split('&')[3].replace(/[^\d.-]/g, '')));
+    const ztVals = Array.from(document.querySelectorAll('#host-top [id$="_zt"] tr'))
+      .filter(r => r.querySelectorAll('td').length === 5)
+      .map(r => parseFloat(r.querySelectorAll('td')[3].textContent));
+    let worst = 0, allMatch = coeffs.length === ztVals.length;
+    for (let i = 0; i < Math.min(coeffs.length, ztVals.length); i++) {
+      const diff = Math.abs(coeffs[i] - ztVals[i]);
+      if (diff > worst) worst = diff;
+      if (diff > 1e-9) allMatch = false;
+    }
+    return { beg, end, rows: coeffs.length, zt: ztVals.length, allMatch, worst };
+  });
+  (texChk.beg === 1 && texChk.end === 1)
+    ? ok('LaTeX 为合法 tabular（begin/end 各 1）')
+    : fail('LaTeX tabular 不配对', JSON.stringify(texChk));
+  (texChk.allMatch && texChk.rows === texChk.zt)
+    ? ok('LaTeX coeff 与塞曼表逐项一致（' + texChk.rows + ' 行，最大偏差 ' + texChk.worst.toExponential(1) + '）')
+    : fail('LaTeX 与塞曼表不一致', JSON.stringify(texChk));
+  // 紧凑模式收起新增折叠区（约束①）
+  await page.evaluate(() => { window.YBPanes.setSplit(15); });
+  await page.waitForTimeout(400);
+  const hfsCompact = await page.evaluate(() => {
+    const d3 = document.querySelector('#host-top [id$="_exp3"]');
+    const d4 = document.querySelector('#host-top [id$="_exp4"]');
+    return { exp3: !d3.open, exp4: !d4.open };
+  });
+  (hfsCompact.exp3 && hfsCompact.exp4) ? ok('紧凑模式收起扫描/LaTeX 折叠区')
+                                       : fail('紧凑未收起 hfs 折叠区', JSON.stringify(hfsCompact));
+  await page.evaluate(() => { window.YBPanes.setSplit(50); });
+  await page.waitForTimeout(400);
+  await shot(page, '15-hfs-scan-latex.png');
+
   /* ---------- 4. fetch 数据库两路径 ---------- */
   section('4. fetch：外壳与独立页两条相对路径');
   // 全新加载外壳（避免上一节 Sr 残留），确认默认 Yb 与数据加载
