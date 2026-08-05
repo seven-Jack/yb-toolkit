@@ -298,6 +298,49 @@ async function main() {
   await page.waitForTimeout(400);
   await shot(page, '12-rabi-3d.png');
 
+  /* ---------- 3c. 椭圆光斑 + η·d 读数 ---------- */
+  section('3c. rabi 椭圆光斑 + η·d 读数');
+  // η·d = d_cyc × η
+  const deta = await page.evaluate(() => {
+    const el = document.querySelector('#host-top [id$="_R-deta"]');
+    return el ? parseFloat(el.textContent) : NaN;
+  });
+  (Math.abs(deta - 0.156075) < 1e-6)
+    ? ok('η·d 读数 ' + deta + '（= d_cyc 0.312150 × η 0.5）')
+    : fail('η·d 读数', deta);
+  // 1/(wx·wy) 标度：wx=100,wy=400 与 wx=wy=200（√(wx·wy)=200）Ω_R 相同
+  const omPair = await page.evaluate(() => {
+    const om = (a, bb) => { YBStore.update({ 'beam.wx': a*1e-6, 'beam.wy': bb*1e-6 });
+      return Math.abs(YBStore.derived.ramanOmega())/(2*Math.PI)/1e6; };
+    const o1 = om(100,400), o2 = om(200,200);
+    return { o1, o2, match: Math.abs(o1-o2) < 1e-12 };
+  });
+  omPair.match
+    ? ok('1/(wx·wy) 标度成立：wx=100/wy=400 Ω=' + omPair.o1.toFixed(4) + ' = wx=wy=200 Ω=' + omPair.o2.toFixed(4))
+    : fail('1/(wx·wy) 标度', JSON.stringify(omPair));
+  // 椭圆光斑勾选：wx≠wy 时勾选并展开 wx/wy 输入
+  const ell = await page.evaluate(() => {
+    YBStore.update({ 'beam.wx': 100e-6, 'beam.wy': 400e-6 });
+    const cb = document.querySelector('#host-top [id$="_c-ell"]');
+    const rows = document.querySelector('#host-top [id$="_ell-rows"]');
+    return { checked: cb.checked, rows: rows.style.display !== 'none' };
+  });
+  (ell.checked && ell.rows)
+    ? ok('椭圆光斑勾选自动勾选并展开 wx/wy 输入')
+    : fail('椭圆光斑勾选', JSON.stringify(ell));
+  // 恢复默认（圆光斑）→ 四锚点不变
+  await page.evaluate(() => YBStore.update({ 'beam.wx': 365e-6, 'beam.wy': 365e-6 }));
+  const an = await page.evaluate(() => ({
+    om: Math.abs(YBStore.derived.ramanOmega())/(2*Math.PI)/1e6,
+    dRed: YBStore.derived.d_red_au().toFixed(6),
+    dCyc: (YBStore.derived.d_cyc_SI()/YBC.SI.ea0).toFixed(6),
+    lam: YBStore.derived.lambda_nm().toFixed(6)
+  }));
+  (an.om>1.726 && an.om<1.727 && an.dRed==='0.540659' && an.dCyc==='0.312150' && an.lam==='555.802363')
+    ? ok('恢复圆光斑后四锚点不变（Ω_R=' + an.om.toFixed(4) + '）')
+    : fail('四锚点', JSON.stringify(an));
+  await shot(page, '17-rabi-ellipse.png');
+
   /* ---------- 3c. 3a-2a：raman-qubit 功率–失谐设计图（折叠区） ---------- */
   section('3c. raman-qubit 功率–失谐设计图');
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle' });

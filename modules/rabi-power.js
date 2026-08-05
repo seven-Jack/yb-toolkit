@@ -28,6 +28,8 @@
           '<p class="u" id="' + i('R-pu') + '">—</p></div>' +
         '<div><p class="k">峰值光强 I₀</p><p class="v" id="' + i('R-i') + '">—</p><p class="u">W/m²</p></div>' +
         '<div><p class="k">有效矩阵元 d_cyc</p><p class="v" id="' + i('R-d') + '">—</p><p class="u">e·a₀</p></div>' +
+        '<div><p class="k">η·d 有效矩阵元</p><p class="v" id="' + i('R-deta') + '">—</p>' +
+          '<p class="u">e·a₀　×η（功率标定用）</p></div>' +
       '</div>' +
 
       '<div class="card">' +
@@ -47,7 +49,17 @@
             '<select id="' + i('u-f') + '">' + U.optionsHTML('freq') + '</select></div></div>' +
           '<div><p class="lbl">w 束腰 (1/e² 强度半径)</p><div class="iu">' +
             '<input type="number" id="' + i('v-w') + '" step="1">' +
-            '<select id="' + i('u-w') + '">' + U.optionsHTML('length') + '</select></div></div>' +
+            '<select id="' + i('u-w') + '">' + U.optionsHTML('length') + '</select></div>' +
+            '<label class="cbx" style="margin-top:8px"><input type="checkbox" id="' + i('c-ell') + '"> ' +
+            '椭圆光斑（wx≠wy）</label></div>' +
+        '</div>' +
+        '<div class="grid2" id="' + i('ell-rows') + '" style="display:none">' +
+          '<div><p class="lbl">w_x (1/e² 强度半径)</p><div class="iu">' +
+            '<input type="number" id="' + i('v-wx') + '" step="1">' +
+            '<select id="' + i('u-wx') + '">' + U.optionsHTML('length') + '</select></div></div>' +
+          '<div><p class="lbl">w_y (1/e² 强度半径)</p><div class="iu">' +
+            '<input type="number" id="' + i('v-wy') + '" step="1">' +
+            '<select id="' + i('u-wy') + '">' + U.optionsHTML('length') + '</select></div></div>' +
         '</div>' +
         '<div class="rw" style="margin:12px 0 0"><span class="n">光路透过率 η</span>' +
           '<input type="range" id="' + i('r-eta') + '" min="0.02" max="1" step="0.01">' +
@@ -104,19 +116,28 @@
       /* ---- 单位句柄 ---- */
       /* 单位在每次重绘开始时解析一次并缓存 —— 绘图循环内每帧曾调用上千次。
        * 与 shared/plot.js 的主题色缓存同理：热路径里不做重复解析。 */
-      var _uP = 'mW', _uF = 'MHz', _uW = 'µm';
+      var _uP = 'mW', _uF = 'MHz', _uW = 'µm', _uWx = 'µm', _uWy = 'µm';
       function syncUnits() {
         _uP = U.resolve('power', $('u-p').value);
         _uF = U.resolve('freq', $('u-f').value);
         _uW = U.resolve('length', $('u-w').value);
+        _uWx = U.resolve('length', $('u-wx').value);
+        _uWy = U.resolve('length', $('u-wy').value);
       }
       function uP() { return _uP; }
       function uF() { return _uF; }
       function uW() { return _uW; }
+      function uWx() { return _uWx; }
+      function uWy() { return _uWy; }
 
       function fill() {
         var s = S.state;
         $('v-p').value = +(U.fromSI('power', s.beam.P_laser, uP())).toPrecision(7);
+        var ellOn = Math.abs(s.beam.wx - s.beam.wy) > 1e-12;
+        $('c-ell').checked = ellOn;
+        $('ell-rows').style.display = ellOn ? '' : 'none';
+        $('v-wx').value = +(U.fromSI('length', s.beam.wx, uWx())).toPrecision(7);
+        $('v-wy').value = +(U.fromSI('length', s.beam.wy, uWy())).toPrecision(7);
         $('v-w').value = +(U.fromSI('length', S.derived.wg(), uW())).toPrecision(7);
         $('r-eta').value = s.beam.eta;
         $('v-pmax').value = +(s.limits.Pmax * 1e3).toPrecision(6);
@@ -169,6 +190,7 @@
         $('R-pu').textContent = uP() + '　到达原子 ' + U.auto('power', V.Pat);
         $('R-i').textContent = V.I.toExponential(3);
         $('R-d').textContent = (V.d / window.YBC.SI.ea0).toFixed(6);
+        $('R-deta').textContent = (V.d * s.beam.eta / window.YBC.SI.ea0).toFixed(6);
         $('R-f').className = 'v' + (V.f > s.limits.fRmax ? ' bad' : '');
         $('R-p').className = 'v' + (s.beam.P_laser > s.limits.Pmax ? ' bad' : '');
       }
@@ -396,18 +418,28 @@
       function onInput() {
         var s = S.state, patch = {};
         var Pv = U.toSI('power', parseFloat($('v-p').value) || 0, uP());
-        var wv = U.toSI('length', parseFloat($('v-w').value) || 0, uW());
         var ev = parseFloat($('r-eta').value);
         if (tgt === 'f' && Math.abs(Pv - s.beam.P_laser) > 1e-15) patch['beam.P_laser'] = Pv;
-        if (wv > 0 && Math.abs(wv - S.derived.wg()) > 1e-15) { patch['beam.wx'] = wv; patch['beam.wy'] = wv; }
+        if ($('c-ell').checked) {
+          var wx = U.toSI('length', parseFloat($('v-wx').value) || 0, uWx());
+          var wy = U.toSI('length', parseFloat($('v-wy').value) || 0, uWy());
+          if (wx > 0 && Math.abs(wx - s.beam.wx) > 1e-15) patch['beam.wx'] = wx;
+          if (wy > 0 && Math.abs(wy - s.beam.wy) > 1e-15) patch['beam.wy'] = wy;
+        } else {
+          var wv = U.toSI('length', parseFloat($('v-w').value) || 0, uW());
+          if (wv > 0 && Math.abs(wv - S.derived.wg()) > 1e-15) { patch['beam.wx'] = wv; patch['beam.wy'] = wv; }
+        }
         if (ev !== s.beam.eta) patch['beam.eta'] = ev;
         $('o-eta').textContent = ev.toFixed(2);
         if (Object.keys(patch).length) c.set(patch);
         sched.tick();
       }
-      ['v-p', 'v-f', 'v-w'].forEach(function (k) { $(k).addEventListener('input', onInput); });
+      ['v-p', 'v-f', 'v-w', 'v-wx', 'v-wy'].forEach(function (k) { $(k).addEventListener('input', onInput); });
       $('r-eta').addEventListener('input', onInput);
-      ['u-p', 'u-f', 'u-w'].forEach(function (k) {
+      $('c-ell').addEventListener('change', function () {
+        fill(); sched.flush();
+      });
+      ['u-p', 'u-f', 'u-w', 'u-wx', 'u-wy'].forEach(function (k) {
         $(k).addEventListener('change', function () { fill(); sched.flush(); }); });
       ['v-pmax', 'v-fmax', 'v-wmin'].forEach(function (k) {
         $(k).addEventListener('input', function () {
