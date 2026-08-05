@@ -333,6 +333,63 @@ async function main() {
   await page.waitForTimeout(400);
   await shot(page, '13-raman-designmap.png');
 
+  /* ---------- 3d. 3a-2b：raman-qubit 波片扫描 + 实测拟合（折叠区） ---------- */
+  section('3d. raman-qubit 波片扫描 + 实测拟合');
+  await page.evaluate(() => {
+    const d = document.querySelector('#host-top [id$="_exp4"]');
+    if (d) { d.open = true; d.dispatchEvent(new Event('toggle')); }
+  });
+  await page.waitForTimeout(400);
+  // 波片图画出内容
+  const wp = await page.evaluate(() => {
+    const cv = document.querySelector('#host-top [id$="_c3"]');
+    if (!cv) return { found: false };
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] !== 0) n++;
+    return { found: true, opaque: n };
+  });
+  wp.found && wp.opaque > 1000
+    ? ok('波片扫描图画中内容（c3 不透明像素 ' + wp.opaque + '）')
+    : fail('波片图未画出', JSON.stringify(wp));
+  // 贴入 placeholder 数据，验证拟合输出到「层」级（θ₀/幅度比/等效束腰合理）
+  await page.evaluate(() => {
+    const qwp = document.querySelector('#host-top [id$="_d-qwp"]');
+    qwp.value = '0\t0.05\n22.5\t1.24\n45\t1.73'; qwp.dispatchEvent(new Event('input'));
+    const pow = document.querySelector('#host-top [id$="_d-pow"]');
+    pow.value = '20\t0.42\n40\t0.87\n80\t1.71'; pow.dispatchEvent(new Event('input'));
+  });
+  await page.waitForTimeout(800);
+  const fitText = await page.evaluate(() => {
+    const fo = document.querySelector('#host-top [id$="_fitout"]');
+    return fo ? fo.textContent.replace(/\s+/g, ' ').trim() : '';
+  });
+  // 功率扫描：幅度比 ≈ 1（0.5–2 之间即合理），等效束腰 ≈ 设定值（差 <30%）
+  const pRatio = (fitText.match(/功率扫描[\s\S]*?幅度比\s*([\d.]+)/) || [])[1];
+  const pWeff = (fitText.match(/反推等效束腰\s*([\d.]+)/) || [])[1];
+  (pRatio && +pRatio > 0.5 && +pRatio < 2)
+    ? ok('功率扫描幅度比合理：' + pRatio + '（≈1）')
+    : fail('功率扫描幅度比', pRatio + ' | ' + fitText);
+  (pWeff && Math.abs(+pWeff - 365) / 365 < 0.3)
+    ? ok('反推等效束腰 ' + pWeff + 'µm ≈ 设定 365µm（物理闭合）')
+    : fail('等效束腰不合理', pWeff);
+  // 波片扫描：θ₀ 合理（−45..45 之间）
+  const t0 = (fitText.match(/拟合零点\s*θ₀\s*=\s*(-?[\d.]+)°/) || [])[1];
+  (t0 !== undefined && Math.abs(+t0) <= 45)
+    ? ok('波片扫描拟合 θ₀ = ' + t0 + '°（合理）')
+    : fail('波片拟合 θ₀', t0);
+  // 紧凑模式收起（约束①）
+  await page.evaluate(() => { window.YBPanes.setSplit(15); });
+  await page.waitForTimeout(400);
+  const wpCompact = await page.evaluate(() => {
+    const d = document.querySelector('#host-top [id$="_exp4"]');
+    return { closed: !d.open };
+  });
+  wpCompact.closed ? ok('紧凑模式收起波片扫描折叠区')
+                   : fail('紧凑未收起波片', JSON.stringify(wpCompact));
+  await page.evaluate(() => { window.YBPanes.setSplit(50); });
+  await page.waitForTimeout(400);
+  await shot(page, '14-raman-waveplate.png');
+
   /* ---------- 4. fetch 数据库两路径 ---------- */
   section('4. fetch：外壳与独立页两条相对路径');
   // 全新加载外壳（避免上一节 Sr 残留），确认默认 Yb 与数据加载

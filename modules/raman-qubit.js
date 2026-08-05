@@ -104,6 +104,18 @@
         '<div style="margin-top:12px"><canvas id="' + i('c2') + '" height="360"></canvas></div>' +
         '<p class="cap">色块为 Ω_R，白色虚线为等 Ω_R，白色实线为等总误差。' +
         '竖线下方灰区为可用功率上限。十字为当前工作点。</p>' +
+      '</details>' +
+
+      '<details class="adv" id="' + i('exp4') + '"><summary>λ/4 波片扫描 + 实测标定</summary>' +
+        '<div style="margin-top:12px"><canvas id="' + i('c3') + '" height="300"></canvas></div>' +
+        '<div class="grid2" style="margin-top:10px">' +
+          '<div><p class="lbl">波片扫描：θ(°) ↹ Ω_R/2π (MHz)</p>' +
+            '<textarea id="' + i('d-qwp') + '" rows="3" placeholder="0↹0.05\n22.5↹1.24\n45↹1.73"></textarea></div>' +
+          '<div><p class="lbl">功率扫描：P(mW) ↹ Ω_R/2π (MHz)</p>' +
+            '<textarea id="' + i('d-pow') + '" rows="3" placeholder="20↹0.42\n40↹0.87\n80↹1.71"></textarea></div>' +
+        '</div>' +
+        '<div id="' + i('fitout') + '" style="margin-top:10px"></div>' +
+        '<p class="cap">贴入实测数据后这里给出 θ₀/幅度比/等效束腰的拟合、RMS 残差与反推标定。</p>' +
       '</details>';
     },
 
@@ -285,6 +297,17 @@
         g.fillText('π/2 门误差', 0, 0); g.restore();
       }
 
+      /* 解析文本区数据：每行 "θ↹Ω" 或 "θ,Ω"，返回 [x,y][] */
+      function parseXY(id) {
+        var r = $(id).value.trim(); if (!r) return [];
+        return r.split(/[\n;]/).map(function (ln) {
+          var p = ln.trim().split(/[\s,\t↹]+/);
+          if (p.length < 2) return null;
+          var x = parseFloat(p[0]), y = parseFloat(p[1]);
+          return (isFinite(x) && isFinite(y)) ? [x, y] : null;
+        }).filter(Boolean);
+      }
+
       /* ---- 功率–失谐设计图（折叠区 exp3） ---- */
       function drawC2(cs) {
         if (!$('exp3').open) return;
@@ -353,9 +376,81 @@
         g.textBaseline = 'top'; g.fillText('激光输出功率 (mW)', 0, 0); g.restore();
       }
 
+      /* ---- λ/4 波片扫描图（折叠区 exp4） ---- */
+      function drawC3() {
+        if (!$('exp4').open) return;
+        var o = P.prep(c.id('c3')), g = o.g, W = o.W, H = o.H, M = { l: 62, r: 18, t: 16, b: 36 };
+        var s = S.state;
+        var base = V.ram(s.beam.eta * s.beam.P_laser, Math.sin(V.thk)) / 1e6;
+        var data = parseXY('d-qwp'), top = base * (1 + 0.05);
+        data.forEach(function (p) { top = Math.max(top, p[1]); });
+        top = top > 0 ? top * 1.15 : 1;
+        var fx = P.scaleLin(0, 180, M.l, W - M.r), fy = P.scaleLin(0, top, H - M.b, M.t);
+        P.axes(g, M, W, H, fx, fy, P.ticksLin(0, 180, 6), P.ticksLin(0, top, 5),
+               'λ/4 波片角度 θ (°)', 'Ω_R/2π (MHz)');
+        var acc = P.color('--accent'), bad = P.color('--bad');
+        P.clip(g, M, W, H, function () {
+          var hi = [], lo = [], i, v, t0 = 0;
+          /* 不确定度控件（r-sw/r-sp/r-sd/r-si）待 3b 或后续引入，本轮用固定 ±5% 误差带 */
+          for (i = 0; i <= 180; i++) { v = base * Math.abs(Math.sin(2 * (i - t0) * Math.PI / 180));
+            hi.push([fx(i), fy(v * 1.05)]); lo.push([fx(i), fy(v * 0.95)]); }
+          g.fillStyle = acc; g.globalAlpha = 0.16; g.beginPath();
+          hi.forEach(function (p, k) { k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); });
+          for (i = lo.length - 1; i >= 0; i--) g.lineTo(lo[i][0], lo[i][1]);
+          g.closePath(); g.fill(); g.globalAlpha = 1;
+          g.strokeStyle = acc; g.lineWidth = 2; g.beginPath();
+          for (i = 0; i <= 180; i++) { v = base * Math.abs(Math.sin(2 * (i - t0) * Math.PI / 180));
+            i ? g.lineTo(fx(i), fy(v)) : g.moveTo(fx(i), fy(v)); }
+          g.stroke();
+          data.forEach(function (p) { g.fillStyle = bad; g.beginPath(); g.arc(fx(p[0]), fy(p[1]), 3.5, 0, 6.2832); g.fill(); });
+        });
+      }
+
+      /* ---- 实测数据拟合（折叠区 exp4） ---- */
+      function doFits() {
+        if (!$('exp4').open) return;
+        var s = S.state, out = [], dp = parseXY('d-pow');
+        if (dp.length >= 2) {
+          var sxy = 0, sxx = 0; dp.forEach(function (p) { sxy += p[0] * p[1]; sxx += p[0] * p[0]; });
+          var slope = sxx > 0 ? sxy / sxx : 0;
+          /* 理论 MHz/mW：1 mW 激光（有效 η·1e-3 W）对应的 Ω_R/2π。
+             注意独立页的 K1 是 /1e9（其 d 因 v-d 缺失而为 0，理论本就无意义）；
+             本模块读真实 V.d，须 /1e6 得 MHz/mW 才能与实测斜率同量纲。 */
+          var K1 = V.ram(s.beam.eta * 1e-3, Math.abs(V.geom)) / 1e6;
+          var ratio = K1 > 0 ? slope / K1 : 0, weff = ratio > 0 ? Math.sqrt(s.beam.wx * s.beam.wy / ratio) : 0;
+          var r2 = 0; dp.forEach(function (p) { var e = slope * p[0] - p[1]; r2 += e * e; });
+          var rms = Math.sqrt(r2 / dp.length), mean = dp.reduce(function (a, p) { return a + p[1]; }, 0) / dp.length;
+          out.push('<b>功率扫描</b>（' + dp.length + ' 点）　实测斜率 ' + slope.toFixed(4) + ' MHz/mW，理论 ' + K1.toFixed(4)
+            + '，<b>幅度比 ' + ratio.toFixed(3) + '</b>　RMS 残差 ' + rms.toFixed(4) + ' MHz（' + (mean > 0 ? (rms / mean * 100).toFixed(1) : '—')
+            + '%）<br>反推等效束腰 <b>' + (weff * 1e6).toFixed(1) + ' µm</b>，当前设定 '
+            + Math.sqrt(s.beam.wx * s.beam.wy * 1e12).toFixed(1) + ' µm（几何平均）');
+        }
+        var dq = parseXY('d-qwp');
+        if (dq.length >= 3) {
+          var best = null;
+          for (var t0 = -45; t0 <= 45; t0 += 0.25) {
+            var sn = 0, sd = 0;
+            dq.forEach(function (p) { var m = Math.abs(Math.sin(2 * (p[0] - t0) * Math.PI / 180)); sn += m * p[1]; sd += m * m; });
+            var A = sd > 0 ? sn / sd : 0, r = 0;
+            dq.forEach(function (p) { var e = A * Math.abs(Math.sin(2 * (p[0] - t0) * Math.PI / 180)) - p[1]; r += e * e; });
+            if (!best || r < best.r) best = { t0: t0, A: A, r: r };
+          }
+          var rms2 = Math.sqrt(best.r / dq.length);
+          var Ath = V.ram(s.beam.eta * s.beam.P_laser, Math.sin(V.thk)) / 1e6;
+          var rel = best.A > 0 ? rms2 / best.A * 100 : 0;
+          out.push('<b>波片扫描</b>（' + dq.length + ' 点）　拟合零点 <b>θ₀ = ' + best.t0.toFixed(1) + '°</b>，峰值 '
+            + best.A.toFixed(3) + ' MHz，理论峰值 ' + Ath.toFixed(3) + ' MHz，<b>幅度比 '
+            + (Ath > 0 ? (best.A / Ath).toFixed(3) : '—') + '</b>　RMS 残差 ' + rms2.toFixed(4) + ' MHz（' + rel.toFixed(1) + '%）<br>'
+            + '<span style="color:var(--fg2)">残差 &gt;5% → 形状不符，查偏振或几何；残差小但幅度比偏离 1 → 查光斑与功率标定。</span>');
+        }
+        $('fitout').innerHTML = out.length
+          ? '<div class="note g" style="margin:0">' + out.join('<br><br>') + '</div>'
+          : '<p class="cap" style="margin:0">贴入数据后这里给出拟合、残差与反推标定。</p>';
+      }
+
       var sched = new P.Scheduler(
         function () { compute(); paint(); drawLevel(); drawC1(true); drawC2(true); },
-        function () { P.measure([c.id('c1'), c.id('c2')]); compute(); paint(); drawLevel(); drawC1(false); drawC2(false); }, 170);
+        function () { P.measure([c.id('c1'), c.id('c2'), c.id('c3')]); compute(); paint(); drawLevel(); drawC1(false); drawC2(false); drawC3(); doFits(); }, 170);
 
       /* ---- 事件 ---- */
       function push() {
@@ -381,10 +476,12 @@
         b.onclick = function () {
           c.set({ 'raman.detuning_Hz': parseFloat(b.dataset.d) }); fill(); sched.flush(); };
       });
-      ['exp1', 'exp2', 'exp3'].forEach(function (k) {
-        $(k).addEventListener('toggle', function () { P.measure([c.id('c1'), c.id('c2')]); sched.flush(); }); });
+      ['exp1', 'exp2', 'exp3', 'exp4'].forEach(function (k) {
+        $(k).addEventListener('toggle', function () { P.measure([c.id('c1'), c.id('c2'), c.id('c3')]); sched.flush(); }); });
+      ['d-qwp', 'd-pow'].forEach(function (k) {
+        $(k).addEventListener('input', function () { sched.flush(); }); });
 
-      fill(); P.measure([c.id('c1'), c.id('c2')]); sched.flush();
+      fill(); P.measure([c.id('c1'), c.id('c2'), c.id('c3')]); sched.flush();
 
       return {
         update: function () { fill(); sched.flush(); },
@@ -392,7 +489,7 @@
           if (on === compact) return;
           compact = on;
           if (on) { $('exp1').open = false; $('exp2').open = false;
-            $('exp3').open = false; }
+            $('exp3').open = false; $('exp4').open = false; }
           $('lvl').style.display = on ? 'none' : 'block';
           sched.flush();
         },
