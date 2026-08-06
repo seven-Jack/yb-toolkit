@@ -556,6 +556,35 @@ async function main() {
   await page.evaluate(() => { window.YBPanes.setSplit(50); });
   await page.waitForTimeout(400);
 
+  /* ---------- 3g. raman 薄壳页：placeholder 数据闭合（v-d 修复验收） ----------
+   * 原独立页 S.d = num('v-d')*AU = 0（v-d 元素缺失）使耦合理论恒为 0。
+   * 薄壳后读 Store 真实 V.d，同样的 3a-2b placeholder 数据应闭合到
+   * 幅度比 0.993、等效束腰 366.3µm，与主页面模块一致。 */
+  section('3g. raman 薄壳页：placeholder 数据闭合（v-d 修复）');
+  await page.goto(BASE + '/tools/raman-qubit.html', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  await page.evaluate(() => {
+    const d = document.querySelector('#host [id$="_exp4"]');
+    if (d) { d.open = true; d.dispatchEvent(new Event('toggle')); }
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    const q = document.querySelector('#host [id$="_d-qwp"]');
+    q.value = '0\t0.05\n22.5\t1.24\n45\t1.73'; q.dispatchEvent(new Event('input'));
+    const p = document.querySelector('#host [id$="_d-pow"]');
+    p.value = '20\t0.42\n40\t0.87\n80\t1.71'; p.dispatchEvent(new Event('input'));
+  });
+  await page.waitForTimeout(900);
+  const thinFit = await page.evaluate(() => {
+    const fo = document.querySelector('#host [id$="_fitout"]');
+    return fo ? fo.textContent.replace(/\s+/g, ' ').trim() : '';
+  });
+  const tRatio = (thinFit.match(/功率扫描[\s\S]*?幅度比\s*([\d.]+)/) || [])[1];
+  const tWeff = (thinFit.match(/反推等效束腰\s*([\d.]+)/) || [])[1];
+  (tRatio === '0.993' && tWeff === '366.3')
+    ? ok('薄壳页功率拟合闭合：幅度比 ' + tRatio + '、等效束腰 ' + tWeff + 'µm（v-d 修复）')
+    : fail('薄壳页闭合', tRatio + '/' + tWeff + ' | ' + thinFit);
+
   /* ---------- 4. fetch 数据库两路径 ---------- */
   section('4. fetch：外壳与独立页两条相对路径');
   // 全新加载外壳（避免上一节 Sr 残留），确认默认 Yb 与数据加载

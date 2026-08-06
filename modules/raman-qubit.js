@@ -48,11 +48,28 @@
               '<button class="seg mini" data-d="1e9">1 G</button>' +
               '<button class="seg mini" data-d="13e9">13 G</button>' +
               '<button class="seg mini" data-d="-2.1e9">−2.1 G</button></div></div>' +
-          '<div><p class="lbl">S₃ 圆偏振度</p>' +
-            '<input type="number" id="' + i('v-s3') + '" step="0.01" min="0" max="1">' +
-            '<p class="cap" style="margin-top:6px">0 = 线偏振（耦合为零）　1 = 圆偏振</p></div>' +
-          '<div><p class="lbl">椭圆倾角 α (°)</p><input type="number" id="' + i('v-a') + '" step="0.5">' +
-            '<p class="cap" style="margin-top:6px">tanα = |E_y/E_z|，影响两腿分配</p></div>' +
+          '<div id="' + i('p-s3') + '">' +
+            '<div><p class="lbl">S₃ 圆偏振度</p>' +
+              '<input type="number" id="' + i('v-s3') + '" step="0.01" min="0" max="1">' +
+              '<p class="cap" style="margin-top:6px">0 = 线偏振（耦合为零）　1 = 圆偏振</p></div>' +
+            '<div><p class="lbl">椭圆倾角 α (°)</p><input type="number" id="' + i('v-a') + '" step="0.5">' +
+              '<p class="cap" style="margin-top:6px">tanα = |E_y/E_z|，影响两腿分配</p></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="segs" style="margin-top:12px">' +
+          '<span style="font-size:13px;color:var(--fg2)">偏振输入</span>' +
+          '<button class="seg mini" data-on="1" id="' + i('pm-s3') + '">S₃（偏振仪）</button>' +
+          '<button class="seg mini" id="' + i('pm-qwp') + '">λ/4 波片角度</button>' +
+        '</div>' +
+        '<div id="' + i('p-qwp') + '" style="display:none">' +
+          '<div class="rw" style="margin-top:10px"><span class="n">波片角度 θ (°)</span>' +
+            '<input type="range" id="' + i('r-th') + '" min="0" max="180" step="0.5">' +
+            '<span class="o" id="' + i('o-th') + '">—</span></div>' +
+          '<div class="rw"><span class="n">快轴零点 θ₀ (°)</span>' +
+            '<input type="range" id="' + i('r-t0') + '" min="-45" max="45" step="0.5">' +
+            '<span class="o" id="' + i('o-t0') + '">—</span></div>' +
+          '<p class="cap">线偏振过 λ/4 波片：S₃ = sin2(θ−θ₀)，α 由琼斯矩阵给出。' +
+          'θ₀ 由「λ/4 波片扫描 + 实测标定」拟合标定。</p>' +
         '</div>' +
         '<div class="grid3" style="margin-top:12px">' +
           '<div><p class="lbl">P_laser 激光输出功率</p><div class="iu">' +
@@ -110,7 +127,7 @@
         '含 F′=1/2 相消干涉因子 Δ_hf/(Δ+Δ_hf)，大失谐下标度由 1/Δ 转为 1/Δ²。</p>' +
       '</details>' +
 
-      '<details class="adv" id="' + i('exp2') + '"><summary>派生量与适用性</summary>' +
+      '<details class="adv" id="' + i('exp2') + '"><summary>派生量与 notebook 对账</summary>' +
         '<div class="grid4" style="margin-top:12px">' +
           '<div class="mc"><p class="k">Ω_π/2π</p><p class="v" id="' + i('m-op') + '">—</p></div>' +
           '<div class="mc"><p class="k">Ω_σ/2π</p><p class="v" id="' + i('m-og') + '">—</p></div>' +
@@ -121,6 +138,23 @@
           '<div class="mc"><p class="k">Z 轴进动</p><p class="v" id="' + i('m-pr') + '">—</p></div>' +
           '<div class="mc"><p class="k">d_red</p><p class="v" id="' + i('m-d') + '">—</p></div>' +
         '</div>' +
+        '<table style="margin-top:12px">' +
+          '<tr><th></th><th style="text-align:right">g₀ &nbsp;m<sub>F</sub>=+1/2</th><th style="text-align:right">g₁ &nbsp;m<sub>F</sub>=−1/2</th></tr>' +
+          '<tr><td>e₂ &nbsp;F′=3/2, m′=−1/2</td><td class="n" id="' + i('D-00') + '">—</td><td class="n" id="' + i('D-01') + '">—</td></tr>' +
+          '<tr><td>e₃ &nbsp;F′=3/2, m′=+1/2</td><td class="n" id="' + i('D-10') + '">—</td><td class="n" id="' + i('D-11') + '">—</td></tr>' +
+        '</table>' +
+        '<div class="grid4" style="margin-top:10px">' +
+          '<div class="mc"><p class="k">d_cyc</p><p class="v" id="' + i('m-dcyc') + '">—</p><p class="u">e·a₀</p></div>' +
+          '<div class="mc"><p class="k">峰值光强 I₀</p><p class="v" id="' + i('m-i') + '">—</p></div>' +
+          '<div class="mc"><p class="k">电场 E₀</p><p class="v" id="' + i('m-E') + '">—</p></div>' +
+          '<div class="mc"><p class="k">到达原子功率</p><p class="v" id="' + i('m-pa') + '">—</p></div>' +
+        '</div>' +
+        '<p class="cap">与 notebook 第 3 单元 <code>D_linewidth</code> 表一一对应：' +
+        'd_cyc = d_red/√3 是每个 q 分量的裸跃迁矩阵元，本工具主式用 d_red = ⟨¹S₀‖er‖³P₁⟩（规则⓪ 由 Γ 反解）。' +
+        'CG 表由 shared/wigner.js 计算（F′=3/2：σ=√(1/3)、π=√(2/3)，以 d_cyc 为单位）。' +
+        '常数与出处：Γ₀/2π = 183 kHz；Δ_hf/2π = +5.936 GHz（F′=3/2 在上，A(³P₁)=3957.833 MHz）；' +
+        'Δ_e/2π = 2.65 MHz；γ_n = 751 Hz/G。Jenkins et al., PRX 12, 021027 (2022) 及勘误 PRX 13, 029902 (2023)；' +
+        '超精细常数 Jones, van Kann, McFerran, Appl. Opt. 62, 3932 (2023)。</p>' +
       '</details>' +
 
       '<details class="adv" id="' + i('exp3') + '"><summary>功率–失谐设计图</summary>' +
@@ -138,6 +172,10 @@
             '<textarea id="' + i('d-pow') + '" rows="3" placeholder="20↹0.42\n40↹0.87\n80↹1.71"></textarea></div>' +
         '</div>' +
         '<div id="' + i('fitout') + '" style="margin-top:10px"></div>' +
+        '<div class="segs" style="margin-top:12px">' +
+          '<button class="seg mini" id="' + i('btn-csv') + '">导出曲线 CSV</button>' +
+          '<button class="seg mini" id="' + i('btn-copy') + '">复制参数行</button>' +
+        '</div>' +
         '<p class="cap">贴入实测数据后这里给出 θ₀/幅度比/等效束腰的拟合、RMS 残差与反推标定。</p>' +
       '</details>' +
 
@@ -170,12 +208,41 @@
           '<p class="cap">Ω_R ∝ P/(w_x w_y)·d²，故 σ_Ω/Ω = √[(σ_P/P)² + 2(σ_w/w)² + (2σ_d/d)²]，束腰贡献最大。' +
           'σ_I/I 只进误差预算（强度噪声项），不进不确定度带。</p>' +
         '</div>' +
+      '</details>' +
+
+      '<details class="adv" id="' + i('exp5') + '"><summary>物理说明与标定流程</summary>' +
+        '<div style="margin-top:10px">' +
+          '<h3 style="font-size:14px;font-weight:500;margin:12px 0 6px">为什么线偏振驱动不了这个比特</h3>' +
+          '<p style="font-size:13px;margin:8px 0">¹S₀ 电子角动量为零，比特是纯核自旋，而光只耦合电子。' +
+          '对 F=1/2 流形二阶有效哈密顿量只有标量项与矢量项 <code>i(ε*×ε)·F</code>，能翻转自旋的只有后者，' +
+          '它正比于圆偏振度并沿光束方向。因此耦合 = |S₃|·sinΘ_kB：<b>线偏振（S₃=0）为零，光束沿 B（Θ_kB=0）也为零。</b>' +
+          '偏振椭圆的取向不改变耦合强度。</p>' +
+          '<h3 style="font-size:14px;font-weight:500;margin:14px 0 6px">为什么要带 F′=1/2 支路</h3>' +
+          '<p style="font-size:13px;margin:8px 0">若所有中间态失谐相同，二阶求和退化为电子空间的恒等算符，' +
+          '核自旋翻转振幅严格为零。耦合完全来自 F′=3/2 与 F′=1/2 的失谐差，故 Ω_R ∝ Δ_hf/[Δ(Δ+Δ_hf)]。' +
+          '小失谐下 ≈ 1/Δ，大失谐下转为 1/Δ²。忽略此项在 180 MHz 差 3%，在 13 GHz 差 3.2 倍。</p>' +
+          '<h3 style="font-size:14px;font-weight:500;margin:14px 0 6px">标定流程</h3>' +
+          '<table>' +
+            '<tr><th style="width:6%">步</th><th>操作</th><th style="width:36%">判读</th></tr>' +
+            '<tr><td>1</td><td>固定功率与失谐，转 λ/4 波片扫一圈量 Rabi 频率，贴进波片扫描框</td>' +
+              '<td>拟合出 θ₀ 与幅度比。残差大 = 偏振或几何有问题；残差小但幅度比偏离 1 = 光斑或功率标定有问题</td></tr>' +
+            '<tr><td>2</td><td>波片停在峰值，扫功率，贴进功率扫描框</td>' +
+              '<td>反推等效束腰，与刀口法/相机对比，±10% 内即认为闭合</td></tr>' +
+            '<tr><td>3</td><td>Ramsey 测比特劈裂随驱动功率的移动</td>' +
+              '<td>与 Δ_LS 读数对比，验证光频移模型</td></tr>' +
+          '</table>' +
+        '</div>' +
+      '</details>' +
+
+      '<details class="adv" id="' + i('exp6') + '"><summary>更新记录</summary>' +
+        '<div id="' + i('chg') + '" style="margin-top:10px"></div>' +
       '</details>';
     },
 
     init: function (c) {
       var $ = c.$, compact = false, V = {}, ellOn = false;
       var axmode = 'log';
+      var polmode = 's3', th = 45;
       /* 测量不确定度（模块内状态，与独立页一致不进 Store/URL）：
        * 独立页 3a-2b 时明确推迟，薄壳全功能页补上。 */
       var unc = { sw: 0.05, sp: 0.05, sd: 0.01, si: 0.01 };
@@ -198,6 +265,12 @@
         $('v-D').value = +(U.fromSI('freq', s.raman.detuning_Hz, U.resolve('freq', $('u-D').value))).toPrecision(7);
         $('v-s3').value = s.beam.S3;
         $('v-a').value = s.beam.alpha_deg;
+        if (polmode === 'qwp') {
+          $('r-th').value = th;
+          $('r-t0').value = s.beam.theta0_deg;
+          $('o-th').textContent = th;
+          $('o-t0').textContent = s.beam.theta0_deg;
+        }
         $('r-k').value = s.beam.theta_kB_deg;
         $('r-b').value = s.beam.B_G;
         $('o-k').textContent = s.beam.theta_kB_deg + '°';
@@ -288,6 +361,17 @@
           $('m-dn').textContent = U.auto('freq', V.dN / (2 * Math.PI), 4);
           $('m-pr').textContent = (V.prec * 180 / Math.PI).toFixed(2) + ' °';
           $('m-d').textContent = (V.d / C.SI.ea0).toFixed(6) + ' e·a₀';
+          /* notebook 对账（补6）：CG 表 + d_cyc/I₀/E₀/到达功率 */
+          var dc = V.d / C.SI.ea0 / Math.sqrt(3);
+          var sig = C.CG.F32.sigma, pi2 = C.CG.F32.pi;
+          $('D-00').textContent = (sig * dc).toFixed(5) + '  (q=−1)';
+          $('D-01').textContent = (pi2 * dc).toFixed(5) + '  (q=0)';
+          $('D-10').textContent = (pi2 * dc).toFixed(5) + '  (q=0)';
+          $('D-11').textContent = (sig * dc).toFixed(5) + '  (q=+1)';
+          $('m-dcyc').textContent = dc.toFixed(4);
+          $('m-i').textContent = (S.derived.I0() / 1e4).toFixed(2) + ' W/cm²';
+          $('m-E').textContent = V.E0.toExponential(3) + ' V/m';
+          $('m-pa').textContent = (V.Pat * 1e3).toFixed(2) + ' mW';
         }
 
         var w = [], bad = false, s2 = S.state;
@@ -482,8 +566,9 @@
                'λ/4 波片角度 θ (°)', 'Ω_R/2π (MHz)');
         var acc = P.color('--accent'), bad = P.color('--bad');
         P.clip(g, M, W, H, function () {
-          var hi = [], lo = [], i, v, t0 = 0;
-          /* 误差带用真实 σ_Ω/Ω（expu 不确定度滑块），不再硬编码 ±5%（3a-2b 遗留） */
+          var hi = [], lo = [], i, v, t0 = S.state.beam.theta0_deg;
+          /* 误差带用真实 σ_Ω/Ω（expu 不确定度滑块），不再硬编码 ±5%（3a-2b 遗留）。
+           * 理论曲线按标定的 θ₀ 平移（波片扫描拟合出的快轴零点）。 */
           for (i = 0; i <= 180; i++) { v = base * Math.abs(Math.sin(2 * (i - t0) * Math.PI / 180));
             hi.push([fx(i), fy(v * (1 + V.rel))]); lo.push([fx(i), fy(v * (1 - V.rel))]); }
           g.fillStyle = acc; g.globalAlpha = 0.16; g.beginPath();
@@ -622,12 +707,14 @@
       function push() {
         var s = S.state, patch = {};
         var Dv = U.toSI('freq', parseFloat($('v-D').value) || 0, U.resolve('freq', $('u-D').value));
-        var s3 = Math.max(0, Math.min(1, parseFloat($('v-s3').value) || 0));
-        var a = parseFloat($('v-a').value) || 0;
         var k = parseFloat($('r-k').value), b = parseFloat($('r-b').value);
         if (Dv !== s.raman.detuning_Hz) patch['raman.detuning_Hz'] = Dv;
-        if (s3 !== s.beam.S3) patch['beam.S3'] = s3;
-        if (a !== s.beam.alpha_deg) patch['beam.alpha_deg'] = a;
+        if (polmode === 's3') {
+          var s3 = Math.max(0, Math.min(1, parseFloat($('v-s3').value) || 0));
+          var a = parseFloat($('v-a').value) || 0;
+          if (s3 !== s.beam.S3) patch['beam.S3'] = s3;
+          if (a !== s.beam.alpha_deg) patch['beam.alpha_deg'] = a;
+        }
         if (k !== s.beam.theta_kB_deg) patch['beam.theta_kB_deg'] = k;
         if (b !== s.beam.B_G) patch['beam.B_G'] = b;
         /* 光束几何：功率 / 束腰（含椭圆解绑）/ 透过率 / 上限 */
@@ -652,6 +739,96 @@
         $('o-k').textContent = k + '°'; $('o-b').textContent = b.toFixed(2) + ' G';
         if (Object.keys(patch).length) c.set(patch);
         sched.tick();
+      }
+      /* λ/4 波片角度输入模式（补4）：S₃ = sin2(θ−θ₀)，α 由琼斯矩阵给出。
+       * θ₀ 是共享标定常数（Store beam.theta0_deg），θ 为模块内状态。
+       * 物理上 S₃ 与 α 写入 Store，其它模块看到的仍是同一份偏振状态。 */
+      function qwpPush() {
+        var s = S.state, patch = {};
+        th = parseFloat($('r-th').value);
+        var t0 = parseFloat($('r-t0').value);
+        if (t0 !== s.beam.theta0_deg) patch['beam.theta0_deg'] = t0;
+        var u = YB.qwp((th - t0) * D2R);
+        /* S3 按工具约定存「圆偏振度」0..1（v-s3 输入 min=0、几何因子用 |S3|、
+         * 波片图与拟合都用 |sin2(θ−θ₀)|）。YB.qwp() 的手性符号对 Ω_R 无影响。 */
+        var s3q = Math.max(0, Math.min(1, Math.abs(u.S3)));
+        var aq = u.alpha * 180 / Math.PI;
+        if (s3q !== s.beam.S3) patch['beam.S3'] = s3q;
+        if (aq !== s.beam.alpha_deg) patch['beam.alpha_deg'] = aq;
+        $('o-th').textContent = th; $('o-t0').textContent = t0;
+        if (Object.keys(patch).length) c.set(patch);
+        sched.tick();
+      }
+      function setPmode(m) {
+        polmode = m;
+        $('pm-s3').dataset.on = m === 's3' ? '1' : '0';
+        $('pm-qwp').dataset.on = m === 'qwp' ? '1' : '0';
+        $('p-s3').style.display = m === 's3' ? '' : 'none';
+        $('p-qwp').style.display = m === 'qwp' ? '' : 'none';
+        fill(); sched.flush();
+      }
+      /* 导出（补5）：曲线 CSV + 复制参数行，照 rabi 模块导出模式 */
+      function exportCSV() {
+        var s = S.state;
+        var rows = ['# yb-toolkit raman-qubit  ' + window.YBV.info.short,
+          '# ' + window.YBURL.link(),
+          '# ' + s.transition.label,
+          '# d_red=' + (V.d / C.SI.ea0).toPrecision(8) + ' ea0, Delta=' + (V.Dh / 1e6) + ' MHz, S3=' + s.beam.S3 +
+            ', wx=' + (s.beam.wx * 1e6).toPrecision(6) + ' um, wy=' + (s.beam.wy * 1e6).toPrecision(6) + ' um, eta=' + s.beam.eta,
+          'P_laser_mW,Omega_MHz,Omega_lo,Omega_hi'];
+        var sl = Math.abs(YB.ramanOmega(V.d, s.beam.eta, s.beam.wx, s.beam.wy, V.Dh, V.geom)) / (2 * Math.PI);
+        for (var i = 0; i <= 50; i++) {
+          var Pw = s.limits.Pmax * i / 50, v = sl * Pw / 1e6;
+          rows.push([Pw.toFixed(3), v.toFixed(6), (v * (1 - V.rel)).toFixed(6), (v * (1 + V.rel)).toFixed(6)].join(','));
+        }
+        rows.push('', 'theta_deg,Omega_MHz');
+        var t0 = s.beam.theta0_deg;
+        var base = V.ram(s.beam.eta * s.beam.P_laser, Math.sin(V.thk)) / 1e6;
+        for (var t = 0; t <= 180; t += 2) rows.push(t + ',' + (base * Math.abs(Math.sin(2 * (t - t0) * Math.PI / 180))).toFixed(6));
+        var b = new Blob([rows.join('\n')], { type: 'text/csv' }), a = document.createElement('a');
+        a.href = URL.createObjectURL(b); a.download = 'yb171_raman.csv'; a.click();
+      }
+      function copyParam() {
+        var t = 'Δ=' + U.auto('freq', V.Dh, 4) + ' w=' + U.auto('length', S.derived.wg()) +
+          ' S₃=' + S.state.beam.S3.toFixed(3) + ' α=' + S.state.beam.alpha_deg.toFixed(1) + '° η=' + S.state.beam.eta +
+          ' | Ω_R/2π=' + U.auto('freq', V.Om / (2 * Math.PI), 4) + '（±' + (V.rel * 100).toFixed(0) + '%）' +
+          ' | π/2=' + U.auto('time', V.t2, 3) + ' | ε=' + V.eTOT.toExponential(2) + ' | ' + window.YBV.info.short;
+        if (navigator.clipboard) navigator.clipboard.writeText(t);
+        $('btn-copy').textContent = '已复制';
+        setTimeout(function () { $('btn-copy').textContent = '复制参数行'; }, 1400);
+      }
+      /* 更新记录（exp6）：模块自己的历史，不照搬独立页工具史（3b-2 说明搬迁约束） */
+      var CHANGELOG = [
+        { v: '5', date: '2026-08-06', by: '3b-3 薄壳收敛',
+          chg: ['独立页收敛为薄壳，挂载本模块读 Store 真实值',
+                '补光束几何（P_laser/w 束腰+椭圆/wx·wy/η/Pmax）、测量不确定度滑块、功率扫描图、λ/4 波片角度输入、CSV 导出、notebook 对账',
+                '修复 v-d 坏理论值：原独立页 S.d=num(\'v-d\')*AU=0 使耦合理论恒为 0，薄壳读 Store 后功率幅度比 0.993、等效束腰 366µm 闭合'],
+          note: '' },
+        { v: '4', date: '2026-07-31', by: '独立页',
+          chg: ['补微分光频移与失谐门误差（此前总误差低估约 3.7 倍）',
+                '新增强度噪声项；修正 S₃ 模式下 α 被硬编码 45° 的缺陷',
+                '新增能级图与偏振椭圆实时图示'],
+          note: '论文工作点 Δ_LS 给出 55.6 kHz（论文 55.5 kHz）。' },
+        { v: '3', date: '2026-07-31', by: '独立页',
+          chg: ['几何因子改写为 |S₃|·sinΘ_kB',
+                '新增 λ/4 波片模型 S₃ = sin2(θ−θ₀)'],
+          note: 'sin2α·sinφ_HV 恒等于圆偏振度 S₃，B⊥光束时耦合与椭圆取向无关，未知几何只剩 θ₀ 与 Θ_kB 两个可标定参数。' },
+        { v: '2', date: '2026-07-31', by: '独立页',
+          chg: ['φ 改为 φ_HV，cos → sin',
+                '加入 F′=1/2 相消干涉因子；Δ_hf 符号纠正为 +5.936 GHz'],
+          note: 'v1 把论文的 φ（Rabi 分量相位差）当成电场分量相位，差 90°，v1 默认工作点（线偏振）实际耦合为零。' },
+        { v: '1', date: '—', by: '独立页',
+          chg: ['d 线宽标定、I₀/E₀ 定义、角向系数 √2/3 与 1/3、总系数 2/9'],
+          note: '经复核正确且沿用至今。' }
+      ];
+      function renderChg() {
+        $('chg').innerHTML = CHANGELOG.map(function (c) {
+          var s = '<div class="rel"><span class="rel-v">v' + c.v + '</span>' +
+            '<div class="rel-d"><b>' + c.date + '</b> · ' + c.by + '</div>' +
+            '<ul class="chg">' + c.chg.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>';
+          if (c.note) s += '<p class="cap">' + c.note + '</p>';
+          return s + '</div>';
+        }).join('');
       }
       ['v-D', 'v-s3', 'v-a', 'v-p', 'v-w', 'v-wx', 'v-wy'].forEach(function (k) { $(k).addEventListener('input', push); });
       ['r-k', 'r-b', 'r-eta'].forEach(function (k) { $(k).addEventListener('input', push); });
@@ -685,6 +862,13 @@
           $('o-' + k.slice(2)).textContent = (unc[k.slice(2)] * 100).toFixed(1) + '%';
           sched.flush();
         }); });
+      $('pm-s3').onclick = function () { setPmode('s3'); };
+      $('pm-qwp').onclick = function () { setPmode('qwp'); };
+      ['r-th', 'r-t0'].forEach(function (k) { $(k).addEventListener('input', qwpPush); });
+      $('btn-csv').onclick = exportCSV;
+      $('btn-copy').onclick = copyParam;
+      $('exp5').addEventListener('toggle', function () { sched.flush(); });
+      $('exp6').addEventListener('toggle', renderChg);
 
       syncUnits(); fill(); P.measure([c.id('c1'), c.id('c2'), c.id('c3'), c.id('c4')]); sched.flush();
 
@@ -695,7 +879,8 @@
           compact = on;
           if (on) { $('exp1').open = false; $('exp2').open = false;
             $('exp3').open = false; $('exp4').open = false;
-            $('expp').open = false; $('expu').open = false; }
+            $('expp').open = false; $('expu').open = false;
+            $('exp5').open = false; $('exp6').open = false; }
           $('lvl').style.display = on ? 'none' : 'block';
           sched.flush();
         },
