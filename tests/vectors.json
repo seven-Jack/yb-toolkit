@@ -559,5 +559,55 @@
       "atol": 0,
       "src": "碱金属基态有两个 F，6j 因子不再被吸收。此前会静默返回 NaN，v0.3.1 起给出说明"
     }
+  ],
+  "steck_cross": [
+    {
+      "name": "⁸⁷Rb D2 约化矩阵元（CG 归一化）vs Steck 4.227 ea0",
+      "fn": "steck_cross",
+      "args": {
+        "case": "d_cg",
+        "gamma_Hz": 6065000,
+        "lam_nm": 780.24121,
+        "Jp": 1.5,
+        "Jg": 0.5
+      },
+      "expect": {
+        "value": 4.227
+      },
+      "rtol": 3e-3,
+      "src": "Steck ⁸⁷Rb D2 数据表（https://steck.us/alkalidata，表 7）：⟨J′‖er‖J⟩ = 4.227 ea₀（CG 归一化）。本框架用 Edmonds 约定，相差 √(2J+1)（J 为基态）。Rb 基态 J=1/2 → 因子 √2，故 d_cg = d_Edmonds/√2 = 4.227。对比：Yb 基态 J=0 → 因子恰为 1，这正是归一化陷阱里『Yb 未暴露问题』的原因。Steck 值不确定度 0.003 ea₀。跨归一化约定交叉验证 —— 求和扫描测同一约定内部自洽，测不到这一层。"
+    },
+    {
+      "name": "⁸⁷Rb D2 伸展循环跃迁系数 vs Steck 表7 2.989 ea0",
+      "fn": "steck_cross",
+      "args": {
+        "case": "cyc",
+        "gamma_Hz": 6065000,
+        "lam_nm": 780.24121,
+        "Jp": 1.5,
+        "I": 1.5,
+        "Jg": 0.5,
+        "F": 2,
+        "Fp": 3
+      },
+      "expect": {
+        "value": 2.989
+      },
+      "rtol": 3e-3,
+      "src": "Steck ⁸⁷Rb D2 表7：伸展循环跃迁矩阵元 = 2.989(3) ea₀。经完整 Wigner 链 zee(I=3/2,J=1/2,J′=3/2,F=2,F′=3,伸展σ⁺)=0.5 × d_Edmonds 得到，同一物理量跨归一化。"
+    },
+    {
+      "name": "⁸⁷Rb D2 空气波长 vs Steck 780.0320 nm",
+      "fn": "steck_cross",
+      "args": {
+        "case": "air_lam",
+        "lam_nm": 780.24121
+      },
+      "expect": {
+        "value": 780.032
+      },
+      "rtol": 5e-6,
+      "src": "Steck ⁸⁷Rb D2 表4：空气波长 780.0320(1) nm。本框架全链以真空波长（NIST 能级导出）为基准，此条用 Edlén 空气折射率换算对照，守住真空/空气波长约定。"
+    }
   ]
 }

@@ -262,6 +262,24 @@ def _dipole_crosscheck(a):
     return {"ratio": d_ed / (math.sqrt(3) * d_cyc)}
 
 
+def _steck_cross(a):
+    case = a["case"]
+    if case == "d_cg":
+        d_ed = d_from_gamma(a["gamma_Hz"], a["lam_nm"], a["Jp"])
+        return {"value": d_ed / math.sqrt(2 * a["Jg"] + 1)}
+    if case == "cyc":
+        d_ed = d_from_gamma(a["gamma_Hz"], a["lam_nm"], a["Jp"])
+        return {"value": zee(a["I"], a["Jg"], a["Jp"], a["F"], a["F"],
+                             a["Fp"], a["Fp"], 1) * d_ed}
+    if case == "air_lam":
+        k = 1000.0 / a["lam_nm"]
+        k2 = k * k
+        t = 8342.13 + 2406030.0 / (130 - k2) + 15997.0 / (38.9 - k2)
+        n = 1 + t * (0.00138823 * 760 / (1 + 0.003671 * 22)) * 1e-8
+        return {"value": a["lam_nm"] / n}
+    raise ValueError(f"未知 steck_cross case: {case}")
+
+
 IMPL.update({
     "dcyc_valid": lambda a: {"ok": 1 if a["Jg"] == 0 else 0},
     "w3j": lambda a: {"value": w3j(a["j"][0], a["j"][1], a["j"][2],
@@ -273,6 +291,7 @@ IMPL.update({
     "lamVac": lambda a: {"lam_nm": lam_vac_from_level(a["ek_cm"])},
     "dFromGamma": lambda a: {"d_au": d_from_gamma(a["gamma_Hz"], a["lam_nm"], a["Jp"])},
     "dipole_crosscheck": _dipole_crosscheck,
+    "steck_cross": _steck_cross,
 })
 
 

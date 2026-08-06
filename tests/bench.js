@@ -70,6 +70,26 @@ const IMPL = {
     const dEdmonds = YBW.dFromGamma(a.gamma_Hz, a.lam_nm, 1);
     const dCyc = YB.dCycFromLinewidth(a.gamma_Hz, a.lam_nm * 1e-9) / YBC.SI.ea0;
     return { ratio: dEdmonds / (Math.sqrt(3) * dCyc) };
+  },
+  steck_cross: a => {
+    if (a.case === 'd_cg') {
+      /* 跨归一化：Steck 用 CG，本框架用 Edmonds，相差 √(2J+1)（J 为基态） */
+      const dEd = YBW.dFromGamma(a.gamma_Hz, a.lam_nm, a.Jp);
+      return { value: dEd / Math.sqrt(2 * a.Jg + 1) };
+    }
+    if (a.case === 'cyc') {
+      /* 伸展循环跃迁系数 × d_Edmonds：经完整 Wigner 链 zee */
+      const dEd = YBW.dFromGamma(a.gamma_Hz, a.lam_nm, a.Jp);
+      return { value: YBW.zee(a.I, a.Jg, a.Jp, a.F, a.F, a.Fp, a.Fp, 1) * dEd };
+    }
+    if (a.case === 'air_lam') {
+      /* 真空→空气：Edlén 折射率（760 torr, 22 °C, 干空气） */
+      const k = 1000 / a.lam_nm, k2 = k * k;
+      const t = 8342.13 + 2406030 / (130 - k2) + 15997 / (38.9 - k2);
+      const n = 1 + t * (0.00138823 * 760 / (1 + 0.003671 * 22)) * 1e-8;
+      return { value: a.lam_nm / n };
+    }
+    throw new Error('未知 steck_cross case: ' + a.case);
   }
 };
 

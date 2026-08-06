@@ -504,6 +504,58 @@ async function main() {
   await page.waitForTimeout(400);
   await shot(page, '15-hfs-scan-latex.png');
 
+  /* ---------- 3f. hfs 循环徽标 + 导出 + 说明 ---------- */
+  section('3f. hfs 循环徽标 + 导出 + 说明搬迁');
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.selectOption('#sel-top', 'hfs-matrix-element');
+  await page.waitForTimeout(800);
+  // 循环跃迁徽标：默认 Yb ³P₁（J′=1）有伸展态 → 2 个子能级
+  const cycBadge = await page.evaluate(() =>
+    document.querySelector('#host-top [id$="_nz-txt"]').textContent);
+  (cycBadge.includes('2 个循环跃迁'))
+    ? ok('循环跃迁徽标：Yb ³P₁ 报 ' + cycBadge)
+    : fail('循环徽标 Yb', cycBadge);
+  // 循环说明紧贴徽标（约束②：说明与徽标同处）
+  const cycNote = await page.evaluate(() =>
+    document.querySelector('#host-top [id$="_cyc-note"]').textContent);
+  (/循环跃迁|无循环跃迁/.test(cycNote))
+    ? ok('循环说明紧贴徽标（' + cycNote.slice(0, 20) + '…）')
+    : fail('循环说明缺失', cycNote);
+  // exp2 扩成三段（归一化陷阱 / Edmonds vs CG / 纪律）
+  await page.evaluate(() => { const d = document.querySelector('#host-top [id$="_exp2"]');
+    d.open = true; d.dispatchEvent(new Event('toggle')); });
+  await page.waitForTimeout(300);
+  const exp2Caps = await page.evaluate(() =>
+    document.querySelector('#host-top [id$="_exp2"]').querySelectorAll('p.cap').length);
+  (exp2Caps >= 3)
+    ? ok('exp2 数据出处扩为三段（' + exp2Caps + ' 段）')
+    : fail('exp2 段数不足', String(exp2Caps));
+  // exp5 更新记录：含约定定论 note
+  await page.evaluate(() => { const d = document.querySelector('#host-top [id$="_exp5"]');
+    d.open = true; d.dispatchEvent(new Event('toggle')); });
+  await page.waitForTimeout(300);
+  const exp5 = await page.evaluate(() => {
+    const d = document.querySelector('#host-top [id$="_exp5"]');
+    return { rels: d.querySelectorAll('.rel').length, note: /约定问题定论/.test(d.textContent) };
+  });
+  (exp5.rels >= 3 && exp5.note)
+    ? ok('exp5 更新记录 ' + exp5.rels + ' 条，含「约定问题定论」note')
+    : fail('exp5 更新记录', JSON.stringify(exp5));
+  // 导出按钮存在（CSV / JSON）
+  const hasExports = await page.evaluate(() =>
+    !!document.querySelector('#host-top [id$="_btn-csv"]') &&
+    !!document.querySelector('#host-top [id$="_btn-json"]'));
+  hasExports ? ok('导出按钮齐全（CSV / JSON / LaTeX）') : fail('导出按钮缺失');
+  // 紧凑模式收起 exp5
+  await page.evaluate(() => { window.YBPanes.setSplit(15); });
+  await page.waitForTimeout(400);
+  const exp5Closed = await page.evaluate(() =>
+    !document.querySelector('#host-top [id$="_exp5"]').open);
+  exp5Closed ? ok('紧凑模式收起 exp5 更新记录') : fail('紧凑未收起 exp5');
+  await page.evaluate(() => { window.YBPanes.setSplit(50); });
+  await page.waitForTimeout(400);
+
   /* ---------- 4. fetch 数据库两路径 ---------- */
   section('4. fetch：外壳与独立页两条相对路径');
   // 全新加载外壳（避免上一节 Sr 残留），确认默认 Yb 与数据加载

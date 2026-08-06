@@ -65,8 +65,12 @@
 
       '<div class="card">' +
         '<div class="chead"><span class="t">塞曼分量 ⟨F′m′|d_q|Fm⟩</span>' +
-          '<span class="cap">单位 ⟨J′‖d‖J⟩</span></div>' +
+          '<span class="cap">单位 ⟨J′‖d‖J⟩</span>' +
+          '<span class="tag" id="' + i('nz') + '" title="循环跃迁：该激发态子能级只有一条衰变通道，散射光子后必然回到原态。可反复散射，是荧光成像与态选择读出的物理基础。D1 线（J′=1/2）无伸展态，故无循环跃迁。">' +
+            '<span id="' + i('nz-txt') + '">—</span></span>' +
+        '</div>' +
         '<div id="' + i('zt') + '"></div>' +
+        '<p class="cap" id="' + i('cyc-note') + '"></p>' +
       '</div>' +
 
       '<details class="adv" id="' + i('exp1') + '"><summary>求和规则逐项检验</summary>' +
@@ -77,9 +81,18 @@
 
       '<details class="adv" id="' + i('exp2') + '"><summary>数据出处与约定</summary>' +
         '<div id="' + i('meta') + '" style="margin-top:10px"></div>' +
-        '<p class="cap"><b>归一化陷阱：</b>d_Edmonds = √(2J+1)·d_CG。J=0 基态时该因子恰为 1，' +
-        '所以 Yb 一直未暴露问题，但碱金属（J=1/2）会差 √2。' +
-        '因此数据库<b>不存任何文献 d 值</b>，一律由 Γ 反解，保证与本框架约定自洽。</p>' +
+        '<p class="cap" style="margin-top:12px"><b>① 归一化陷阱：</b>' +
+        'd_Edmonds = √(2J+1)·d_CG。J=0 基态时该因子恰为 1，所以 Yb 一直未暴露问题，' +
+        '但碱金属（J=1/2）会差 √2。</p>' +
+        '<p class="cap"><b>② Edmonds vs CG 约定：</b>两个约定相差 √(2J+1)。文献（如 Steck 数据表）' +
+        '常用 CG 归一化，与本框架差一个因子。例：⁸⁷Rb D2 的 ⟨J′‖er‖J⟩，Steck 给 4.227 e·a₀，' +
+        '本框架对应 √2×4.227 = 5.978 e·a₀ —— 直接抄 Steck 的数值会差 √2。</p>' +
+        '<p class="cap"><b>③ 纪律：</b>数据库<b>不存任何文献 d 值</b>，一律由 Γ 反解，' +
+        '保证与本框架约定自洽（见 README 规则 ⓪）。</p>' +
+      '</details>' +
+
+      '<details class="adv" id="' + i('exp5') + '"><summary>更新记录</summary>' +
+        '<div id="' + i('chg') + '" style="margin-top:10px"></div>' +
       '</details>' +
 
       '<details class="adv" id="' + i('exp3') + '"><summary>全库 42 组合求和规则扫描</summary>' +
@@ -90,13 +103,15 @@
         '<div id="' + i('scanout') + '" class="selftest" style="margin-top:10px"></div>' +
       '</details>' +
 
-      '<details class="adv" id="' + i('exp4') + '"><summary>LaTeX 导出当前塞曼表</summary>' +
+      '<details class="adv" id="' + i('exp4') + '"><summary>导出：塞曼表 LaTeX / CSV / 全库 JSON</summary>' +
         '<div class="segs" style="margin:12px 0 0">' +
           '<button class="seg mini" id="' + i('btn-tex') + '">复制 LaTeX 表格</button>' +
+          '<button class="seg mini" id="' + i('btn-csv') + '">下载 CSV</button>' +
+          '<button class="seg mini" id="' + i('btn-json') + '">下载全库 JSON</button>' +
           '<span style="flex:1"></span><span class="cap" id="' + i('texnote') + '"></span>' +
         '</div>' +
         '<textarea id="' + i('texout') + '" rows="8" readonly style="margin-top:10px"></textarea>' +
-        '<p class="cap">可直接粘进论文。数值与上方塞曼分量表逐项一致（coeff = 裸 CG，value = ×d_red）。</p>' +
+        '<p class="cap">CSV / LaTeX 为当前塞曼分量表；JSON 为完整数据库，可作下一版数据源（数据与代码分离）。</p>' +
       '</details>';
     },
 
@@ -209,30 +224,59 @@
           '　出处：' + (tr.src || '—');
 
         /* 塞曼分量表 */
-        var F = t.F, Fp = t.Fp, I = t.I, rows = [], sr = {};
+        var F = t.F, Fp = t.Fp, I = t.I, rows = [], sr = {}, chan = {};
+        /* 通道数须在完整基态流形上统计（含全部 F），才能正确判循环跃迁 ——
+         * 只数选中 F 会把 Rb 这类多 F 基态误判为循环。 */
+        var allF = W.frange(t.Jg, I), allFp = W.frange(t.Jp, I);
+        allF.forEach(function (f) {
+          for (var mm = -f; mm <= f + 1e-9; mm++) {
+            allFp.forEach(function (fp) {
+              for (var qq = -1; qq <= 1; qq++) {
+                var mpp = mm + qq;
+                if (Math.abs(mpp) > fp + 1e-9) continue;
+                if (Math.abs(W.zee(I, t.Jg, t.Jp, f, mm, fp, mpp, qq)) < 1e-12) continue;
+                chan[fp + ':' + mpp] = (chan[fp + ':' + mpp] || 0) + 1;
+              }
+            });
+          }
+        });
         for (var m = -F; m <= F + 1e-9; m++) {
           for (var q = -1; q <= 1; q++) {
             var mp = m + q;
             if (Math.abs(mp) > Fp + 1e-9) continue;
             var v = W.zee(I, t.Jg, t.Jp, F, m, Fp, mp, q);
             if (Math.abs(v) < 1e-12) continue;
-            rows.push({ m: m, mp: mp, q: q, v: v });
+            rows.push({ m: m, mp: mp, q: q, v: v, cyc: false });
             sr[mp] = (sr[mp] || 0) + v * v;
           }
         }
+        rows.forEach(function (r) { r.cyc = chan[Fp + ':' + r.mp] === 1; });
+        /* 徽标报当前跃迁是否支持循环（在完整流形上统计伸展态子能级），
+         * 而非只看选中的 F/F′ —— D1 线无伸展态恒为 0，D2/³P₁ 有伸展态。 */
+        var nCycAll = 0;
+        allFp.forEach(function (fp) {
+          for (var mp2 = -fp; mp2 <= fp + 1e-9; mp2++)
+            if (chan[fp + ':' + mp2] === 1) nCycAll++;
+        });
         var lim = compact ? 6 : rows.length;
         var POL = { '-1': 'σ⁻', '0': 'π', '1': 'σ⁺' };
         var html = '<table><tr><th>m</th><th>偏振</th><th>m′</th>' +
           '<th style="text-align:right">数值</th><th style="text-align:right">精确值</th></tr>';
         rows.slice(0, lim).forEach(function (r) {
           html += '<tr><td class="n">' + fmtHalf(r.m) + '</td><td>' + POL[r.q] + '</td>' +
-            '<td class="n">' + fmtHalf(r.mp) + '</td><td class="n">' + r.v.toFixed(6) +
+            '<td class="n">' + fmtHalf(r.mp) + (r.cyc ? ' <b style="color:var(--bad)" title="循环跃迁">◉</b>' : '') +
+            '</td><td class="n">' + r.v.toFixed(6) +
             '</td><td class="n">' + W.pretty(r.v) + '</td></tr>';
         });
         html += '</table>';
         if (lim < rows.length) html += '<p class="cap">已显示 ' + lim + ' / ' + rows.length +
           ' 条（紧凑模式）。拉高窗格可看全部。</p>';
         $('zt').innerHTML = html;
+        $('nz-txt').textContent = nCycAll + ' 个循环跃迁子能级';
+        /* 循环跃迁说明 —— 徽标与说明放同一处（约束②） */
+        $('cyc-note').textContent = nCycAll > 0
+          ? '◉ 循环跃迁：该激发态子能级只有一条衰变通道，散射光子后必然回到原态，可反复散射 —— 荧光成像与态选择读出的物理基础。'
+          : '无循环跃迁：本跃迁无伸展态（单通道）子能级。D1 线（J′=1/2）无伸展态，做不了循环荧光成像。';
 
         /* 求和规则 */
         var keys = Object.keys(sr), worst = 0;
@@ -324,16 +368,100 @@
         } else note.textContent = '表格已填入下方文本框。';
       }
 
+      /* ---- 下载 CSV（折叠区 exp4）---- */
+      function runCsv() {
+        var t = S.state.transition, F = t.F, Fp = t.Fp, I = t.I, dRM = S.derived.d_red_au();
+        var L = ['F,m,q,Fp,mp,coefficient,value_au,cycling'];
+        for (var m = -F; m <= F + 1e-9; m++)
+          for (var q = -1; q <= 1; q++) {
+            var mp = m + q;
+            if (Math.abs(mp) > Fp + 1e-9) continue;
+            var v = W.zee(I, t.Jg, t.Jp, F, m, Fp, mp, q);
+            if (Math.abs(v) < 1e-12) continue;
+            L.push([fmtHalf(F), fmtHalf(m), q, fmtHalf(Fp), fmtHalf(mp),
+              v.toFixed(9), (v * dRM).toFixed(9),
+              (chanCount(F, Fp, I, t, mp) === 1) ? 1 : 0].join(','));
+          }
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/csv;charset=utf-8' }));
+        a.download = t.A + '' + t.element + '_matrix_elements.csv';
+        a.click();
+      }
+      function chanCount(F, Fp, I, t, mp) {
+        /* 在完整基态流形上统计 (Fp,mp) 的衰变通道数（跨全部 F） */
+        var n = 0;
+        var allF = W.frange(t.Jg, I);
+        allF.forEach(function (f) {
+          for (var mm = -f; mm <= f + 1e-9; mm++) {
+            var q = mp - mm;
+            if (Math.abs(q) > 1) continue;
+            if (Math.abs(W.zee(I, t.Jg, t.Jp, f, mm, Fp, mp, q)) > 1e-12) n++;
+          }
+        });
+        return n;
+      }
+
+      /* ---- 下载全库 JSON（折叠区 exp4）---- */
+      function runJson() {
+        var out = {
+          tool: 'yb-toolkit hfs-matrix-element',
+          convention: 'Edmonds (3j)',
+          exported: new Date().toISOString().slice(0, 10),
+          elements: DB
+        };
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
+        a.download = 'transitions_export.json';
+        a.click();
+      }
+
+      /* ---- 更新记录（折叠区 exp5）---- */
+      var CHANGELOG = [
+        { v: '3b', date: '2026-08-06', by: '模块化',
+          chg: ['补 CSV / 全库 JSON 导出与循环跃迁徽标',
+                '数据出处与约定扩为三段（归一化陷阱 / Edmonds vs CG / 纪律）',
+                '新增 Steck 交叉验证测试向量（steck_cross）'],
+          note: '纪律说明与输入配套才有效：紧贴"d 由 Γ 反解"输入，防止直接抄文献 d 值差 √(2J+1)。' },
+        { v: '3a', date: '2026-08-04', by: '模块化',
+          chg: ['独立页并入外壳，改读 data/transitions.json',
+                '新增全库 42 组合求和规则扫描（R1/R2/R3）',
+                '新增 LaTeX 导出'],
+          note: '' },
+        { v: '2.1', date: '2026-07-30', by: '初版协作',
+          chg: ['数据库改存激发态能级 E_k，真空波长由 λ = 10⁷/E_k 导出',
+                '修正 4 处误填空气波长的条目（Mg/Hg/Cd ¹P₁、Mg ³P₁，约 +290 ppm）',
+                '修正 Sr ¹S₀–¹P₁ 线宽 30.5→32 MHz、Yb ¹S₀–¹P₁ 29→28 MHz'],
+          note: '约定问题定论：d_Edmonds = √(2J+1)·d_CG。此前两次判断均有误 —— 先错误地把 0.543 除以 √3，' +
+                '后又错误地否认 √2 因子存在。查 Steck 原表后确认该因子真实，且 J=0 时恰为 1，' +
+                '这解释了为何 Yb 的推导始终未受影响。教训：数据库不存文献 d 值，一律由 Γ 反解。' },
+        { v: '2.0', date: '2026-07-30', by: '初版协作',
+          chg: ['推广到任意 J，加入 Rb / Cs / K / Na（J=1/2 基态）',
+                'I、J′、λ 改为只读；Γ 与 d 保留可调'],
+          note: 'Cs D2 有 126 条分量、⁴⁰K D2 有 146 条，筛选是必需而非可选。' }
+      ];
+      function renderChg() {
+        $('chg').innerHTML = CHANGELOG.map(function (c) {
+          var s = '<div class="rel"><span class="rel-v">v' + c.v + '</span>' +
+            '<div class="rel-d"><b>' + c.date + '</b> · ' + c.by + '</div>' +
+            '<ul class="chg">' + c.chg.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>';
+          if (c.note) s += '<p class="cap">' + c.note + '</p>';
+          return s + '</div>';
+        }).join('');
+      }
+
       $('exp1').addEventListener('toggle', render);
       $('exp2').addEventListener('toggle', render);
+      $('exp5').addEventListener('toggle', renderChg);
       $('btn-scan').onclick = runScan;
       $('btn-tex').onclick = runTex;
+      $('btn-csv').onclick = runCsv;
+      $('btn-json').onclick = runJson;
 
       return {
         update: function () { if (DB) { syncFromStore(); render(); } },
         setCompact: function (on) { compact = on;
           if (on) { $('exp1').open = false; $('exp2').open = false;
-            $('exp3').open = false; $('exp4').open = false; }
+            $('exp3').open = false; $('exp4').open = false; $('exp5').open = false; }
           render(); },
         impact: function () {
           return 'd_red = ' + S.derived.d_red_au().toFixed(6) + ' e·a₀　λ = ' +
