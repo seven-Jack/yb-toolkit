@@ -110,7 +110,7 @@
     },
 
     init: function (c) {
-      var $ = c.$, tgt = 'f', axmode = 'lin', compact = false, sched, azim = -135;
+      var $ = c.$, tgt = 'f', axmode = 'lin', compact = false, sched, azim = -135, ellOn = false;
       var st = S.state;
 
       /* ---- 单位句柄 ---- */
@@ -133,7 +133,7 @@
       function fill() {
         var s = S.state;
         $('v-p').value = +(U.fromSI('power', s.beam.P_laser, uP())).toPrecision(7);
-        var ellOn = Math.abs(s.beam.wx - s.beam.wy) > 1e-12;
+        if (Math.abs(s.beam.wx - s.beam.wy) > 1e-12) ellOn = true;
         $('c-ell').checked = ellOn;
         $('ell-rows').style.display = ellOn ? '' : 'none';
         $('v-wx').value = +(U.fromSI('length', s.beam.wx, uWx())).toPrecision(7);
@@ -420,7 +420,7 @@
         var Pv = U.toSI('power', parseFloat($('v-p').value) || 0, uP());
         var ev = parseFloat($('r-eta').value);
         if (tgt === 'f' && Math.abs(Pv - s.beam.P_laser) > 1e-15) patch['beam.P_laser'] = Pv;
-        if ($('c-ell').checked) {
+        if (ellOn) {
           var wx = U.toSI('length', parseFloat($('v-wx').value) || 0, uWx());
           var wy = U.toSI('length', parseFloat($('v-wy').value) || 0, uWy());
           if (wx > 0 && Math.abs(wx - s.beam.wx) > 1e-15) patch['beam.wx'] = wx;
@@ -437,6 +437,12 @@
       ['v-p', 'v-f', 'v-w', 'v-wx', 'v-wy'].forEach(function (k) { $(k).addEventListener('input', onInput); });
       $('r-eta').addEventListener('input', onInput);
       $('c-ell').addEventListener('change', function () {
+        ellOn = $('c-ell').checked;
+        if (!ellOn) {
+          var s0 = S.state, wg = S.derived.wg();
+          if (Math.abs(s0.beam.wx - wg) > 1e-12 || Math.abs(s0.beam.wy - wg) > 1e-12)
+            c.set({ 'beam.wx': wg, 'beam.wy': wg });
+        }
         fill(); sched.flush();
       });
       ['u-p', 'u-f', 'u-w', 'u-wx', 'u-wy'].forEach(function (k) {

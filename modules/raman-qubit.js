@@ -17,7 +17,8 @@
     title: '拉曼比特',
     subtitle: '双光子拉曼  Ω_R ∝ P',
     reads: ['transition.*', 'beam.*', 'raman.*', 'limits.*'],
-    writes: ['raman.detuning_Hz', 'beam.S3', 'beam.alpha_deg', 'beam.theta_kB_deg', 'beam.B_G'],
+    writes: ['raman.detuning_Hz', 'beam.S3', 'beam.alpha_deg', 'beam.theta_kB_deg', 'beam.B_G',
+             'beam.P_laser', 'beam.wx', 'beam.wy', 'beam.eta', 'limits.Pmax'],
 
     template: function (c) {
       var i = c.id;
@@ -53,7 +54,29 @@
           '<div><p class="lbl">椭圆倾角 α (°)</p><input type="number" id="' + i('v-a') + '" step="0.5">' +
             '<p class="cap" style="margin-top:6px">tanα = |E_y/E_z|，影响两腿分配</p></div>' +
         '</div>' +
-        '<div class="rw" style="margin-top:12px"><span class="n">光束与 B 夹角 Θ_kB (°)</span>' +
+        '<div class="grid3" style="margin-top:12px">' +
+          '<div><p class="lbl">P_laser 激光输出功率</p><div class="iu">' +
+            '<input type="number" id="' + i('v-p') + '" step="1">' +
+            '<select id="' + i('u-p') + '">' + U.optionsHTML('power') + '</select></div></div>' +
+          '<div><p class="lbl">w 束腰 (1/e² 强度半径)</p><div class="iu">' +
+            '<input type="number" id="' + i('v-w') + '" step="1">' +
+            '<select id="' + i('u-w') + '">' + U.optionsHTML('length') + '</select></div>' +
+            '<label class="cbx" style="margin-top:8px"><input type="checkbox" id="' + i('c-ell') + '"> ' +
+            '椭圆光斑（wx≠wy）</label></div>' +
+          '<div><p class="lbl">可用最大功率 (mW)</p><input type="number" id="' + i('v-pmax') + '" step="10"></div>' +
+        '</div>' +
+        '<div class="grid2" id="' + i('ell-rows') + '" style="display:none">' +
+          '<div><p class="lbl">w_x (1/e² 强度半径)</p><div class="iu">' +
+            '<input type="number" id="' + i('v-wx') + '" step="1">' +
+            '<select id="' + i('u-wx') + '">' + U.optionsHTML('length') + '</select></div></div>' +
+          '<div><p class="lbl">w_y (1/e² 强度半径)</p><div class="iu">' +
+            '<input type="number" id="' + i('v-wy') + '" step="1">' +
+            '<select id="' + i('u-wy') + '">' + U.optionsHTML('length') + '</select></div></div>' +
+        '</div>' +
+        '<div class="rw" style="margin-top:12px"><span class="n">光路透过率 η</span>' +
+          '<input type="range" id="' + i('r-eta') + '" min="0.02" max="1" step="0.01">' +
+          '<span class="o" id="' + i('o-eta') + '">—</span></div>' +
+        '<div class="rw"><span class="n">光束与 B 夹角 Θ_kB (°)</span>' +
           '<input type="range" id="' + i('r-k') + '" min="0" max="90" step="1">' +
           '<span class="o" id="' + i('o-k') + '">—</span></div>' +
         '<div class="rw"><span class="n">磁场 B (G)</span>' +
@@ -120,7 +143,20 @@
     },
 
     init: function (c) {
-      var $ = c.$, compact = false, V = {};
+      var $ = c.$, compact = false, V = {}, ellOn = false;
+
+      /* 单位在每次重绘开始时解析一次并缓存（规则③：热路径不反复解析） */
+      var _uP = 'mW', _uW = 'µm', _uWx = 'µm', _uWy = 'µm';
+      function syncUnits() {
+        _uP = U.resolve('power', $('u-p').value);
+        _uW = U.resolve('length', $('u-w').value);
+        _uWx = U.resolve('length', $('u-wx').value);
+        _uWy = U.resolve('length', $('u-wy').value);
+      }
+      function uP() { return _uP; }
+      function uW() { return _uW; }
+      function uWx() { return _uWx; }
+      function uWy() { return _uWy; }
 
       function fill() {
         var s = S.state;
@@ -131,6 +167,17 @@
         $('r-b').value = s.beam.B_G;
         $('o-k').textContent = s.beam.theta_kB_deg + '°';
         $('o-b').textContent = (+s.beam.B_G).toFixed(2) + ' G';
+        /* 光束几何：束腰/椭圆/透过率/上限（照 rabi 模块同一模式，共享同一份 Store） */
+        $('v-p').value = +(U.fromSI('power', s.beam.P_laser, uP())).toPrecision(7);
+        $('r-eta').value = s.beam.eta;
+        $('o-eta').textContent = (+s.beam.eta).toFixed(2);
+        $('v-pmax').value = +(s.limits.Pmax * 1e3).toPrecision(6);
+        if (Math.abs(s.beam.wx - s.beam.wy) > 1e-12) ellOn = true;
+        $('c-ell').checked = ellOn;
+        $('ell-rows').style.display = ellOn ? '' : 'none';
+        $('v-w').value = +(U.fromSI('length', S.derived.wg(), uW())).toPrecision(7);
+        $('v-wx').value = +(U.fromSI('length', s.beam.wx, uWx())).toPrecision(7);
+        $('v-wy').value = +(U.fromSI('length', s.beam.wy, uWy())).toPrecision(7);
       }
 
       function compute() {
@@ -454,23 +501,54 @@
 
       /* ---- 事件 ---- */
       function push() {
-        var patch = {};
+        var s = S.state, patch = {};
         var Dv = U.toSI('freq', parseFloat($('v-D').value) || 0, U.resolve('freq', $('u-D').value));
         var s3 = Math.max(0, Math.min(1, parseFloat($('v-s3').value) || 0));
         var a = parseFloat($('v-a').value) || 0;
         var k = parseFloat($('r-k').value), b = parseFloat($('r-b').value);
-        if (Dv !== S.state.raman.detuning_Hz) patch['raman.detuning_Hz'] = Dv;
-        if (s3 !== S.state.beam.S3) patch['beam.S3'] = s3;
-        if (a !== S.state.beam.alpha_deg) patch['beam.alpha_deg'] = a;
-        if (k !== S.state.beam.theta_kB_deg) patch['beam.theta_kB_deg'] = k;
-        if (b !== S.state.beam.B_G) patch['beam.B_G'] = b;
+        if (Dv !== s.raman.detuning_Hz) patch['raman.detuning_Hz'] = Dv;
+        if (s3 !== s.beam.S3) patch['beam.S3'] = s3;
+        if (a !== s.beam.alpha_deg) patch['beam.alpha_deg'] = a;
+        if (k !== s.beam.theta_kB_deg) patch['beam.theta_kB_deg'] = k;
+        if (b !== s.beam.B_G) patch['beam.B_G'] = b;
+        /* 光束几何：功率 / 束腰（含椭圆解绑）/ 透过率 / 上限 */
+        var Pv = U.toSI('power', parseFloat($('v-p').value) || 0, uP());
+        if (Pv !== s.beam.P_laser) patch['beam.P_laser'] = Pv;
+        if (ellOn) {
+          var wx = U.toSI('length', parseFloat($('v-wx').value) || 0, uWx());
+          var wy = U.toSI('length', parseFloat($('v-wy').value) || 0, uWy());
+          if (wx > 0 && wx !== s.beam.wx) patch['beam.wx'] = wx;
+          if (wy > 0 && wy !== s.beam.wy) patch['beam.wy'] = wy;
+        } else {
+          var wv = U.toSI('length', parseFloat($('v-w').value) || 0, uW());
+          if (wv > 0 && Math.abs(wv - S.derived.wg()) > 1e-15) {
+            patch['beam.wx'] = wv; patch['beam.wy'] = wv;
+          }
+        }
+        var ev = parseFloat($('r-eta').value);
+        if (ev !== s.beam.eta) patch['beam.eta'] = ev;
+        $('o-eta').textContent = ev.toFixed(2);
+        var pmax = (parseFloat($('v-pmax').value) || 1) * 1e-3;
+        if (pmax !== s.limits.Pmax) patch['limits.Pmax'] = pmax;
         $('o-k').textContent = k + '°'; $('o-b').textContent = b.toFixed(2) + ' G';
         if (Object.keys(patch).length) c.set(patch);
         sched.tick();
       }
-      ['v-D', 'v-s3', 'v-a'].forEach(function (k) { $(k).addEventListener('input', push); });
-      ['r-k', 'r-b'].forEach(function (k) { $(k).addEventListener('input', push); });
+      ['v-D', 'v-s3', 'v-a', 'v-p', 'v-w', 'v-wx', 'v-wy'].forEach(function (k) { $(k).addEventListener('input', push); });
+      ['r-k', 'r-b', 'r-eta'].forEach(function (k) { $(k).addEventListener('input', push); });
       $('u-D').addEventListener('change', function () { fill(); sched.flush(); });
+      ['u-p', 'u-w', 'u-wx', 'u-wy'].forEach(function (k) {
+        $(k).addEventListener('change', function () { syncUnits(); fill(); sched.flush(); }); });
+      $('c-ell').addEventListener('change', function () {
+        ellOn = $('c-ell').checked;
+        if (!ellOn) {
+          var s0 = S.state, wg = S.derived.wg();
+          if (Math.abs(s0.beam.wx - wg) > 1e-12 || Math.abs(s0.beam.wy - wg) > 1e-12)
+            c.set({ 'beam.wx': wg, 'beam.wy': wg });
+        }
+        fill(); sched.flush();
+      });
+      $('v-pmax').addEventListener('input', push);
       $('c-comp').addEventListener('change', function () { sched.flush(); });
       c.container.querySelectorAll('[data-d]').forEach(function (b) {
         b.onclick = function () {
@@ -481,7 +559,7 @@
       ['d-qwp', 'd-pow'].forEach(function (k) {
         $(k).addEventListener('input', function () { sched.flush(); }); });
 
-      fill(); P.measure([c.id('c1'), c.id('c2'), c.id('c3')]); sched.flush();
+      syncUnits(); fill(); P.measure([c.id('c1'), c.id('c2'), c.id('c3')]); sched.flush();
 
       return {
         update: function () { fill(); sched.flush(); },
