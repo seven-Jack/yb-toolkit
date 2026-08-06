@@ -29,8 +29,9 @@ node tests/bench.js && python3 tests/bench.py    # 跑测试
 | 适合 | 跨模块工作流、演示、快速估算 | 深入某一个计算 |
 
 **物理不会分叉**：两者都从 `shared/constants.js` 与 `shared/physics.js` 取值，
-公式与常数只有一份。暂时重复的只有界面代码，这是有意的取舍 —— 模块尚未覆盖
-独立页面的全部功能（三维曲面、波片扫描拟合、42 组合自检等），收敛前保留两者。
+公式与常数只有一份。`rabi-power.html`、`raman-qubit.html` 已是只挂载单模块的薄壳
+（`tools/*.html` 只剩导航与 URL 恢复/写入），`hfs-matrix-element.html` 仍保留完整
+独立页 —— 模块与独立页收敛（3b-3）只剩 hfs 未做。
 
 ## 目录
 
@@ -188,14 +189,16 @@ YBM.register({
 1. **`data/calibrations.json` 全为 null，待填入实测值。**
    偏振与几何标定（波片零点 θ₀、光束–磁场夹角 Θ_kB）完成前，
    拉曼模块的绝对幅度不应作定量预测。
-2. **模块与独立页面收敛。** 把三维曲面、波片扫描拟合、42 组合自检等
-   补进模块，然后把 `tools/*.html` 改为只挂载单个模块的薄壳，
-   消除界面代码的重复。
-3. `tools/raman-qubit.html`（独立页面）的画布代码尚未迁到 `shared/plot.js`，
-   仍有 v7 之前的布局抖动问题。`modules/raman-qubit.js` 已用新写法。
+2. **模块与独立页面收敛（3b-3）。** `rabi-power.html`、`raman-qubit.html`
+   已改为只挂载单模块的薄壳（raman 含全部功能：光束几何、不确定度滑块、
+   功率扫描图、λ/4 波片角度输入、CSV 导出、notebook 对账），只剩
+   `tools/hfs-matrix-element.html` 未收敛。
+3. ~~`tools/raman-qubit.html`（独立页面）的画布代码尚未迁到 `shared/plot.js`，~~
+   ~~仍有 v7 之前的布局抖动问题。~~ 已随 3b-3 薄壳消除（模块用 `shared/plot.js`，
+   独立页改为薄壳不再有自己的画布）。
 4. Γ 长期挂着 183 / 182 两个值终究会出岔子，查一次原始文献定死一个。
-5. 真实浏览器验证。烟雾测试的 DOM 全是桩，canvas 渲染、布局、
-   拖拽、fetch 加载数据库都没有实测过。
+5. ~~真实浏览器验证。~~ 已完成：`tests/browser.js`（Playwright + 系统 Chrome）
+   覆盖 canvas 渲染（数不透明像素）、布局、拖拽、fetch 加载数据库，已接入 CI。
 
 ## 依据
 

@@ -12,9 +12,9 @@
 | 项 | 值 |
 |---|---|
 | 当前分支 | `dev` |
-| 最新 commit | `a89371c`（3b-2：hfs 补 CSV/JSON 导出 + 循环徽标 + 说明搬迁 + Steck 交叉向量） |
+| 最新 commit | `a9d9da6`（3b-3：raman 薄壳 + 补1~6 + 说明搬迁 + v-d 修复；其后为文档收尾 commit） |
 | 工作区 | **干净**（`git status --short` 无输出） |
-| 相对 origin | 领先 9 个 commit（未 push 是正常，本地日常在 dev 上推进） |
+| 相对 origin | 领先 20 个 commit（未 push 是正常，本地日常在 dev 上推进） |
 
 ### 五套测试的准确通过数（本地逐一跑过验证）
 
@@ -24,7 +24,7 @@
 | bench.py | `python3 tests/bench.py` | **40 / 40** 全部通过（另附全库校验：18 条跃迁 lam/ek 一致、d 有限为正） |
 | crosscheck | `node tests/crosscheck.js` | **全部一致**（7 项常数两侧逐位一致） |
 | smoke | `node tests/smoke.js` | **18 / 18** 烟雾测试全部通过 |
-| browser | `node tests/browser.js` | **59 项，失败 0**，无 console error（剪贴板断言已移出计数——headless 下异步剪贴板时好时坏，曾致 59/60 波动，见 CHANGELOG） |
+| browser | `node tests/browser.js` | **60 项，失败 0**，无 console error（剪贴板断言已移出计数——headless 下异步剪贴板时好时坏，曾致 59/60 波动；3b-3 新增薄壳页闭合断言） |
 
 四条一键命令（即 `npm test`）：`node tests/bench.js && python3 tests/bench.py && node tests/crosscheck.js && node tests/smoke.js`；浏览器单独 `node tests/browser.js`。
 本地开发先 `python3 -m http.server 8000` 再开 `http://localhost:8000`。浏览器测试若本地 8000 未起，会自动临时起一个。
@@ -86,7 +86,7 @@
 > 同一模式重复出现过的已标出次数。这些都是真实发生过、会导致返工或损坏的坑。
 
 **A. 「假设某状态已就绪但实际未必」—— 出现过四次**
-- v-d 三处：独立页 `tools/raman-qubit.html` 的 `pick()` 里 `document.getElementById('v-d')` 但页面没有该元素（字段命名不同），且无 null 保护，每次加载都抛异常。该页**三处**同类访问（style、num 读 value、calc 写 value）+ `num()` 助手本身，逐一补 null 保护。这导致独立页 `S.d = num('v-d')*AU = 0`，所有耦合理论值恒为 0 —— 是 3b 薄壳前"独立页 vs 模块理论值差异"的根因。
+- v-d 三处：独立页 `tools/raman-qubit.html` 的 `pick()` 里 `document.getElementById('v-d')` 但页面没有该元素（字段命名不同），且无 null 保护，每次加载都抛异常。该页**三处**同类访问（style、num 读 value、calc 写 value）+ `num()` 助手本身，逐一补 null 保护。这导致独立页 `S.d = num('v-d')*AU = 0`，所有耦合理论值恒为 0 —— 是 3b 薄壳前"独立页 vs 模块理论值差异"的根因。**已随 3b-3 raman 薄壳彻底消除**：薄壳读 Store 真实 V.d，placeholder 数据闭合到幅度比 0.993、等效束腰 366.3µm（browser.js 3g 永久回归断言）。
 - hfs 模块异步就绪竞态：`cur={el:null}` 要等 `loadDB()` Promise 兑现才填值，但 `render()` 里 `var d=DB[cur.el]` → `DB[null]` 是 undefined → `d.tr` 抛错。触发：DB 已加载但 cur 未就绪的时间窗内展开折叠区；以及 file:// 下 loadDB() reject 后任何 toggle 必抛。修复：render() 开头 `if (!DB || cur.el===null || cur.tr===null) return;`。这是**同一模式第四处**（前三处是独立页 v-d 三处访问）。
 - 独立页异步化后，`compute()/loadDB()/buildTr()/buildIso()/自检 $("run")` 全部加 `if(!ready())` 守卫。
 
@@ -137,6 +137,7 @@ let n=0; for (let i=3;i<d.length;i+=4) if (d[i]!==0) n++;
 ## ⑤ 待办与决策记录（当前进度：3b-2 已完成）
 
 ### 时间线（最新在前）
+- **3b-3（raman 部分）**（`0f2c4dc`~`a9d9da6`）：`tools/raman-qubit.html` 改薄壳 + 补1 光束几何 / 补2 不确定度滑块 / 补3 功率扫描图 / 补4 λ/4 波片角度输入 / 补5 CSV 导出 / 补6 notebook 对账 + 说明搬迁（exp2 数据出处 / exp5 物理说明 / exp6 更新记录）。**v-d 坏理论值随薄壳消除**（薄壳读 Store 真实 V.d，placeholder 数据闭合到幅度比 0.993、等效束腰 366.3µm）。**hfs 部分未做，是下一个 3b-3 剩余任务。**
 - **3b-2**（`a89371c`）：hfs 补 CSV/JSON 导出 + 循环徽标 + 说明搬迁 + Steck 交叉向量。**已完成。**
 - 之前：3a-1（rabi 三维曲面）、3a-2a（raman 设计图）、3a-2b（raman 波片+拟合）、3a-3（hfs 求和扫描+LaTeX）、3b-1（rabi 薄壳 + 椭圆光斑 + η·d）。
 
@@ -166,8 +167,8 @@ let n=0; for (let i=3;i<d.length;i+=4) if (d[i]!==0) n++;
 - 设计判断：这 3 条**跨归一化约定**，是求和扫描测不到的层 —— 求和扫描测同一套约定内部的自洽，永远测不到"约定对不对"。⑪ 项自检里只有 Steck 交叉验证是真独有的，其余被全库扫描覆盖。
 
 ### 后续待办
-- **3b-3：raman-qubit / hfs 改薄壳**。照 3b-1 对 rabi 的做法（`tools/rabi-power.html` 已改成 87 行薄壳，`YBM.mount('rabi-power', host, {compact:false})` + 一套 URL 恢复/写入），把 `tools/raman-qubit.html`、`tools/hfs-matrix-element.html` 也改成只挂载单模块的薄壳，消除界面代码重复。**注意**：模块已覆盖大部分功能（raman 模块已有 exp3 设计图、exp4 波片扫描+实测拟合；hfs 模块已有求和扫描、LaTeX、CSV/JSON、循环徽标），独立页仍多出的主要是 UI 类（悬浮解释、raman 的测量不确定度滑块 r-sw/r-sp/r-sd/r-si、Γ/d 切换等）—— 薄壳前按 3b-2 那套"补三项/舍四项+理由"的裁决框架核对哪些要补、哪些接受丢失。改薄壳后**独立页 vs 模块的 v-d 理论值差异会自动消失**（见 ③A）—— 薄壳后独立页读 Store 真实值。
-- **README/CHANGELOG 收尾**：README「待办」条目逐条核对更新（其中 #2 模块与独立页收敛即 3b-3；#3 raman 画布迁移；#5 真实浏览器验证已完成要勾掉）。
+- **3b-3（剩余：hfs 改薄壳）**。raman-qubit 已薄壳（见时间线），只剩 `tools/hfs-matrix-element.html` 照同样做法改成薄壳。hfs 模块已覆盖求和扫描、LaTeX、CSV/JSON、循环徽标；独立页仍多出的主要是 UI 类（悬浮解释、Γ/d 切换等）—— 按 3b-2 那套"补 X 项/舍 Y 项+理由"的裁决框架核对哪些要补、哪些接受丢失（可参考 3b-3 raman 的裁决：Γ/d 切换是规则⓪ 漏洞应舍，导出/对账类按 hfs 已有先例）。改薄壳后**独立页 vs 模块的 v-d 理论值差异会自动消失**（见 ③A）—— 薄壳后独立页读 Store 真实值。
+- **README/CHANGELOG 收尾**：README「待办」条目逐条核对更新（其中 #2 模块与独立页收敛即 3b-3，raman 部分已完成、剩 hfs；#3 raman 画布迁移已随薄壳消除；#5 真实浏览器验证已完成）。
 
 ### 长期待办（README「待办」）
 1. `data/calibrations.json` 全为 null，待填实测值。偏振与几何标定（波片零点 θ₀、光束–磁场夹角 Θ_kB）完成前，拉曼模块的绝对幅度不应作定量预测。
