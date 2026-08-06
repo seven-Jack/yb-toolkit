@@ -174,6 +174,8 @@ let n=0; for (let i=3;i<d.length;i+=4) if (d[i]!==0) n++;
 2. 模块与独立页面收敛（3b-3）。
 3. raman 独立页画布迁移到 `shared/plot.js`。
 4. Γ 长期挂着 183/182 两个值，查一次原始文献定死一个。
+5. CI 复用 `scripts/verify.sh`（**缓**）：当前 CI 拆 vectors/browser 两 job 是有意的——浏览器测试只在 main/PR 跑，省 dev 的反馈速度。verify.sh 一把梭会抹掉这个优化。若要统一，需让 verify.sh 支持"是否含浏览器测试"的开关。
+6. 多人并行（**不适用**，当前单一执行方）：HANDOFF 与 PROGRESS 假定同一执行方顺序推进。若将来多人并行，需重新约定任务归属与 PROGRESS 尾部"当前任务"字段，避免冲突。
 
 ---
 
