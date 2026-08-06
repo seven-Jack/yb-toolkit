@@ -24,7 +24,7 @@
 | bench.py | `python3 tests/bench.py` | **40 / 40** 全部通过（另附全库校验：18 条跃迁 lam/ek 一致、d 有限为正） |
 | crosscheck | `node tests/crosscheck.js` | **全部一致**（7 项常数两侧逐位一致） |
 | smoke | `node tests/smoke.js` | **18 / 18** 烟雾测试全部通过 |
-| browser | `node tests/browser.js` | **60 项，失败 0**，无 console error |
+| browser | `node tests/browser.js` | **59 项，失败 0**，无 console error（剪贴板断言已移出计数——headless 下异步剪贴板时好时坏，曾致 59/60 波动，见 CHANGELOG） |
 
 四条一键命令（即 `npm test`）：`node tests/bench.js && python3 tests/bench.py && node tests/crosscheck.js && node tests/smoke.js`；浏览器单独 `node tests/browser.js`。
 本地开发先 `python3 -m http.server 8000` 再开 `http://localhost:8000`。浏览器测试若本地 8000 未起，会自动临时起一个。

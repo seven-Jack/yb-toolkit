@@ -620,12 +620,18 @@ async function main() {
   const hashHasState = shareURL.includes('#') && /top=|bot=|el=|P=/.test(shareURL);
   hashHasState ? ok('复制链接后 URL 含完整状态（' + shareURL.slice(0, 50) + '…）')
                : fail('复制链接状态', shareURL);
-  // 剪贴板内容（授权后尽力读取；headless 下异步剪贴板可能取不到，降级为跳过）
+  // 剪贴板内容：尽力读取，但【不计入 PASSED】。headless 下异步剪贴板即使
+  // 已授权（见 newContext permissions）也因页面焦点问题时好时坏，导致通过数
+  // 59/60 波动——时绿时红比没有测试更糟（会训练人忽略红灯，且是「测试绿灯
+  // 但没测到东西」模式的变种）。剪贴板行为已被上方「复制链接后 URL 含完整
+  // 状态」断言覆盖（#btn-share 会先 writeURL 写 hash），这里只打印诊断行，
+  // 保证每轮通过数完全确定。
   const copied = await page.evaluate(() => {
     return new Promise(res => navigator.clipboard.readText().then(res).catch(() => ''));
   });
-  if (copied.includes('top=')) ok('剪贴板含可分享链接（' + copied.slice(0, 40) + '…）');
-  else console.log('      (headless 剪贴板读取不可用，跳过剪贴板断言)');
+  console.log(copied.includes('top=')
+    ? '      (诊断) 剪贴板含可分享链接（' + copied.slice(0, 40) + '…）—— 不计入计数'
+    : '      (诊断) headless 剪贴板读取不可用，跳过 —— 不计入计数');
   // 在新标签打开 hashed URL 恢复（用 shareURL，而非依赖剪贴板）
   const p2 = await context.newPage();
   await p2.goto(shareURL, { waitUntil: 'networkidle' });
