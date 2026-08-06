@@ -84,6 +84,17 @@ fi
 
 echo
 echo "==== 4/4 摘要 ===="
+echo "   本次测的是这些改动（git diff --stat HEAD）："
+if [ -z "$(git diff --stat HEAD)" ]; then
+  echo "     （无已跟踪文件的改动）"
+else
+  git diff --stat HEAD | sed 's/^/       /'
+fi
+UNTRACKED="$(git ls-files --others --exclude-standard)"
+if [ -n "$UNTRACKED" ]; then
+  echo "     未跟踪新文件（不在 diff --stat 里，见步骤 3）："
+  printf '%s\n' "$UNTRACKED" | sed 's/^/       /'
+fi
 if [ "$FAILED" -eq 0 ]; then
   echo "✅ 全绿：${COUNTS}四锚点确认"
   echo "   工作区：${WS_STATE}"
