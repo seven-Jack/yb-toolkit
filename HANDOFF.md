@@ -12,9 +12,9 @@
 | 项 | 值 |
 |---|---|
 | 当前分支 | `dev` |
-| 最新 commit | `ca1e795`（3b-3 完成：raman + hfs 独立页全部改薄壳；其后为文档收尾 commit） |
+| 最新 commit | `58c98b1`（3b 全部完成：rabi/raman/hfs 三个独立页全部改薄壳；其后为 HANDOFF 状态更新 commit） |
 | 工作区 | **干净**（`git status --short` 无输出） |
-| 相对 origin | 已 push 到 `origin/dev`（`5bfbc25..ca1e795`；CI vectors job 通过、browser job 按设计只在 main/PR 跑） |
+| 相对 origin | 已 push 到 `origin/dev`（最新 `5bfbc25..58c98b1`；CI vectors job 通过、browser job 按设计只在 main/PR 跑） |
 
 ### 五套测试的准确通过数（本地逐一跑过验证）
 
@@ -89,15 +89,19 @@
 - v-d 三处：独立页 `tools/raman-qubit.html` 的 `pick()` 里 `document.getElementById('v-d')` 但页面没有该元素（字段命名不同），且无 null 保护，每次加载都抛异常。该页**三处**同类访问（style、num 读 value、calc 写 value）+ `num()` 助手本身，逐一补 null 保护。这导致独立页 `S.d = num('v-d')*AU = 0`，所有耦合理论值恒为 0 —— 是 3b 薄壳前"独立页 vs 模块理论值差异"的根因。**已随 3b-3 raman 薄壳彻底消除**：薄壳读 Store 真实 V.d，placeholder 数据闭合到幅度比 0.993、等效束腰 366.3µm（browser.js 3g 永久回归断言）。
 - hfs 模块异步就绪竞态：`cur={el:null}` 要等 `loadDB()` Promise 兑现才填值，但 `render()` 里 `var d=DB[cur.el]` → `DB[null]` 是 undefined → `d.tr` 抛错。触发：DB 已加载但 cur 未就绪的时间窗内展开折叠区；以及 file:// 下 loadDB() reject 后任何 toggle 必抛。修复：render() 开头 `if (!DB || cur.el===null || cur.tr===null) return;`。这是**同一模式第四处**（前三处是独立页 v-d 三处访问）。
 - 独立页异步化后，`compute()/loadDB()/buildTr()/buildIso()/自检 $("run")` 全部加 `if(!ready())` 守卫。
+- **共同点：默认某个元素/状态/数据"应该存在"，但实际要么不存在（元素命名不同）、要么异步还没就绪（时序窗口）。** 这类 bug 全部靠真实浏览器/异步路径才暴露，烟雾测试的桩环境走不到。修复 = 要么 null 保护、要么就绪守卫；新增独立页/异步加载时先问自己"这一步能拿到东西吗"。
 
 **B. 「用脚本批量改写文件」—— 出现两次，两次都损坏文件**
 - `json.dump` 改写 `data/transitions.json` 损坏（只剩 `{`）。
 - Python 批量删波片代码块误删 `compute()` 与 `V.ram`，模块起不来。
 - 教训：一律用精确小步 Edit + 每步 `node --check`；临时坏数据在内存里用 `copy.deepcopy` 构造（`validate_transitions()` 已重构为接受 `db` 参数），不碰磁盘。见硬规则⑤。
+- **共同点：用脚本大范围改写文件，改完才发现坏（json.dump 重排/转义/损坏、批量删代码误删 compute() 与 V.ram）。** 脚本一次改动太多，无法在出错点停下。此模式已被 opencode.json 的 bash deny 规则机械化（`python3 -c *` / `node -e *` / `sed -i*` / `rm *` / `git reset --hard*`）。
 
-**C. 「测试绿灯但没测到东西」—— 出现两次**
+**C. 「测试绿灯但没测到东西」—— 出现过三次**
 - J≠0 时画布清空断言**写反**：无效态下图表被 `prep()` 清空（0 不透明像素）是设计意图（不显示旧数值），不是空屏 bug，断言最初误判为失败。
 - 紧凑模式测试用 Yb 测不出截断：Yb 塞曼表本就只有 6 行，30→6 截断无体现，会"让坏的功能看起来是好的"；换 Sr（30 行）才验证到。测试用例选数据要让目标差异足够大。
+- 椭圆勾选框解绑（3b-3）：browser.js 3c 只测了「Store 里 wx≠wy → 勾选框自动点亮」这条**状态驱动**路径，从没测「用户点击勾选框」这条**用户操作**路径——而坏恰好坏在点击路径（fill() 把勾选弹回）。rabi 与 raman 两处同时有。
+- **共同点：测试只覆盖了一条「省事」的路径，漏了真实用户会走的另一条。** 以后加交互控件，**状态驱动与用户操作两条路都要测**；断言方向、用例数据也要对准真实行为。
 
 **D. 物理闭合的假象（见 ④）**
 - K1 单位 bug：见下节，是最重要的一例。
@@ -106,7 +110,7 @@
 - 折叠区不会自动重新展开：`setCompact(false)` 只收起、不展开，恢复高度后 `<details>` 需手动点开。是有意设计，断言只锁行数恢复，不锁自动展开。
 - `render()` 竞态修复的「DB 已加载但 cur 未就绪」半段无测试保护：烟雾环境 fetch 被 reject、DB 恒 null，走不到那半段，唯一覆盖是 browser.js（真实 HTTP 加载下有该窗口），目前未写专门断言。**已知测试边界，记下而非假装覆盖。**
 - 浏览器测试的 53→54 计数（见文末「附录」）。
-- 独立页 `tools/raman-qubit.html` 的画布代码尚未迁到 `shared/plot.js`，仍有 v7 之前布局抖动（README 待办 #3）；`modules/raman-qubit.js` 已用新写法。
+- 独立页 `tools/raman-qubit.html` 的画布代码**已随 3b-3 薄壳消除**（独立页改为薄壳，画布都在 `modules/raman-qubit.js`，用 `shared/plot.js` 新写法）。
 
 ---
 
@@ -134,10 +138,10 @@ let n=0; for (let i=3;i<d.length;i+=4) if (d[i]!==0) n++;
 
 ---
 
-## ⑤ 待办与决策记录（当前进度：3b-2 已完成）
+## ⑤ 待办与决策记录（当前进度：3b 已全部完成）
 
 ### 时间线（最新在前）
-- **3b-3 完成**（`0f2c4dc`~`ca1e795`）：三个独立页全部改薄壳。raman 部分补1~6（光束几何/不确定度/功率扫描图/波片角度输入/CSV 导出/notebook 对账）+ 说明搬迁 exp2/exp5/exp6，**v-d 坏理论值随薄壳消除**（placeholder 数据闭合到幅度比 0.993、等效束腰 366.3µm）；hfs 部分补超精细约化矩阵元表 ⟨F′‖d‖F⟩（exp1，R1 数据可视化），loadDB 按页面位置选路径。3b-2 裁决的 hfs 项（CSV/JSON/循环徽标/说明）当时已进模块，薄壳直接继承。
+- **3b 全部完成**（`0f2c4dc`~`58c98b1`）：三个独立页全部改薄壳。raman 部分补1~6（光束几何/不确定度/功率扫描图/波片角度输入/CSV 导出/notebook 对账）+ 说明搬迁 exp2/exp5/exp6，**v-d 坏理论值随薄壳消除**（placeholder 数据闭合到幅度比 0.993、等效束腰 366.3µm）；hfs 部分补超精细约化矩阵元表 ⟨F′‖d‖F⟩（exp1，R1 数据可视化），loadDB 按页面位置选路径。3b-2 裁决的 hfs 项（CSV/JSON/循环徽标/说明）当时已进模块，薄壳直接继承。
 - **3b-2**（`a89371c`）：hfs 补 CSV/JSON 导出 + 循环徽标 + 说明搬迁 + Steck 交叉向量。**已完成。**
 - 之前：3a-1（rabi 三维曲面）、3a-2a（raman 设计图）、3a-2b（raman 波片+拟合）、3a-3（hfs 求和扫描+LaTeX）、3b-1（rabi 薄壳 + 椭圆光斑 + η·d）。
 
@@ -166,16 +170,26 @@ let n=0; for (let i=3;i<d.length;i+=4) if (d[i]!==0) n++;
 - **期望值必须来自 Steck 原表，不是从本代码算出来的。**拿不到原始数值，就在向量 `src` 里写明来源与不确定度。这是规则②的底线。
 - 设计判断：这 3 条**跨归一化约定**，是求和扫描测不到的层 —— 求和扫描测同一套约定内部的自洽，永远测不到"约定对不对"。⑪ 项自检里只有 Steck 交叉验证是真独有的，其余被全库扫描覆盖。
 
-### 后续待办
-- **README/CHANGELOG 收尾**：README「待办」已逐条核对（#2 模块与独立页收敛已完成；#3 raman 画布迁移已随薄壳消除；#5 真实浏览器验证已完成）。**3b 系列已全部完成**，下一步回到长期待办（标定数据、Γ 定值）或新的 3c 系列。
+### 3b 完成后的架构现状
 
-### 长期待办（README「待办」）
-1. `data/calibrations.json` 全为 null，待填实测值。偏振与几何标定（波片零点 θ₀、光束–磁场夹角 Θ_kB）完成前，拉曼模块的绝对幅度不应作定量预测。
-2. 模块与独立页面收敛（3b-3）。
-3. raman 独立页画布迁移到 `shared/plot.js`。
-4. Γ 长期挂着 183/182 两个值，查一次原始文献定死一个。
-5. CI 复用 `scripts/verify.sh`（**缓**）：当前 CI 拆 vectors/browser 两 job 是有意的——浏览器测试只在 main/PR 跑，省 dev 的反馈速度。verify.sh 一把梭会抹掉这个优化。若要统一，需让 verify.sh 支持"是否含浏览器测试"的开关。
-6. 多人并行（**不适用**，当前单一执行方）：HANDOFF 与 PROGRESS 假定同一执行方顺序推进。若将来多人并行，需重新约定任务归属与 PROGRESS 尾部"当前任务"字段，避免冲突。
+- **界面代码只剩一份。** 三个工具的界面逻辑都在 `modules/*.js`（rabi-power / raman-qubit / hfs-matrix-element）；`tools/*.html` 三个页面全部是**薄壳**（~87 行：导航条 + `<div id="host">` + `YBM.mount(...)` + Store URL 恢复/写入），不再有自己的计算或画布。模块与独立页的界面代码重复已消除（README 待办 #2 勾掉）。
+- **物理层与界面层的边界（清晰分层，改东西先确认动的是哪一层）：**
+  - **物理层（唯一来源，不许在别处重写）**：`shared/constants.js`（常数 + 出处）、`shared/physics.js`（公式）、`shared/wigner.js`（角动量代数）、`shell/store.js` 的 `derived`（派生量现算）。改动必须先过 `tests/vectors.json`（规则②）并锁四锚点。
+  - **界面层（只调物理层，不重算公式）**：`modules/*.js` 的 `template/init/compute/paint`，从 `YBC`/`YB`/`YBW` 取值、从 `YBStore` 读输入，界面自己的状态（如 raman 的测量不确定度滑块、偏振输入模式）留在模块内不进 Store。
+  - **外壳（Store 状态机 + 挂载 + URL）**：`shell/store.js`（只存输入，规则④）、`shell/registry.js`（模块注册/挂载/id 前缀）、`shell/panes.js`（分栏/紧凑/URL 编码）。薄壳页的 URL 恢复/写入直接复用这套编码（rabi: el/Ek/G/P/wx/wy/eta；raman: D/P/S3/a/wx/wy/k/B/eta；hfs: el/Ek/G）。
+  - **数据流**：用户改输入 → Store（只存输入）→ 订阅的模块 `update()` → 模块 `compute()` 从物理层现算派生量 → `paint()` 展示。跨模块联动靠 Store 的 `reads/writes` 声明与提示条，不直接互相调用。
+
+### 待办（3b 完成后重排）
+
+**需要人提供输入 / 决策（执行方不碰，等组里）：**
+1. **`data/calibrations.json` 标定值** —— 束腰、透过率、波片零点 θ₀、光束–磁场夹角 Θ_kB 是实验装置的物理属性，必须实验组实测提供，编不出也算不出。填之前拉曼模块的绝对幅度不作定量预测（README 待办 #1）。
+2. **Γ 取 183 还是 182** —— 文献分散 182–184 kHz，保留两个值是权宜之计。定死哪个要查原始测量的方法与不确定度，由组里判断（不是执行方）。
+
+**可自动推进：无。** 3b 系列已全部完成；`README/CHANGELOG` 已收尾（待办 #2/#3/#5 勾账）。执行方不要在待办清空后自己找活干。
+
+**待决策（非阻塞，组里随时可决定，不在执行方职权内）：**
+- CI 复用 `scripts/verify.sh`（缓）：当前 CI 拆 vectors/browser 两 job 是有意的——浏览器测试只在 main/PR 跑，省 dev 反馈速度。若要统一需先让 verify.sh 支持"是否含浏览器测试"开关。
+- 多人并行（不适用，当前单一执行方）：若将来多人并行需重新约定任务归属。
 
 ---
 

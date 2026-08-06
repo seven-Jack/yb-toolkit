@@ -46,7 +46,7 @@ modules/
   raman-qubit.js
   hfs-matrix-element.js
 tools/
-  rabi-power.html       完整版独立页面
+  rabi-power.html       薄壳（导航 + 挂载单模块 + URL）
   raman-qubit.html
   hfs-matrix-element.html
 shared/
