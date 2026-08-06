@@ -585,6 +585,28 @@ async function main() {
     ? ok('薄壳页功率拟合闭合：幅度比 ' + tRatio + '、等效束腰 ' + tWeff + 'µm（v-d 修复）')
     : fail('薄壳页闭合', tRatio + '/' + tWeff + ' | ' + thinFit);
 
+  /* ---------- 3h. hfs 薄壳：超精细约化矩阵元表 ⟨F′‖d‖F⟩（R1） ---------- */
+  section('3h. hfs 薄壳：超精细约化矩阵元表（R1）');
+  await page.goto(BASE + '/tools/hfs-matrix-element.html', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(900);
+  await page.evaluate(() => {
+    const d = document.querySelector('#host [id$="_exp1"]');
+    if (d) { d.open = true; d.dispatchEvent(new Event('toggle')); }
+  });
+  await page.waitForTimeout(500);
+  const hyf = await page.evaluate(() => {
+    const t = document.querySelector('#host [id$="_hyf"]');
+    if (!t) return { found: false, rows: 0, sum: NaN };
+    const rows = Array.from(t.querySelectorAll('tr')).filter(tr => tr.querySelectorAll('td').length === 5);
+    let sum = 0;
+    rows.forEach(r => { sum += parseFloat(r.querySelectorAll('td')[4].textContent); });
+    return { found: true, rows: rows.length, sum: sum };
+  });
+  // Yb ¹S₀(J=0)→³P₁(J′=1) I=1/2：F=1/2，F′=1/2 与 3/2 两行，相对线强和 = (2F+1)/(2J+1) = 2
+  (hyf.found && hyf.rows === 2 && Math.abs(hyf.sum - 2) < 1e-6)
+    ? ok('超精细约化矩阵元表：Yb ³P₁ 两行，相对线强和 = ' + hyf.sum.toFixed(4) + '（R1 成立）')
+    : fail('超精细表 R1', JSON.stringify(hyf));
+
   /* ---------- 4. fetch 数据库两路径 ---------- */
   section('4. fetch：外壳与独立页两条相对路径');
   // 全新加载外壳（避免上一节 Sr 残留），确认默认 Yb 与数据加载
