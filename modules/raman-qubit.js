@@ -139,11 +139,46 @@
         '</div>' +
         '<div id="' + i('fitout') + '" style="margin-top:10px"></div>' +
         '<p class="cap">贴入实测数据后这里给出 θ₀/幅度比/等效束腰的拟合、RMS 残差与反推标定。</p>' +
+      '</details>' +
+
+      '<details class="adv" id="' + i('expp') + '"><summary>功率扫描（Ω_R vs P）</summary>' +
+        '<div class="chead" style="margin-top:8px"><span></span>' +
+          '<span class="segs" style="margin:0">' +
+            '<button class="seg mini" data-on="1" id="' + i('ax-log') + '">双对数</button>' +
+            '<button class="seg mini" id="' + i('ax-lin') + '">双线性</button>' +
+          '</span></div>' +
+        '<div style="margin-top:8px"><canvas id="' + i('c4') + '" height="300"></canvas></div>' +
+        '<p class="cap">固定 Δ 下的 Ω_R vs P。阴影为不确定度带，灰线为 ×0.5 / ×2 束腰，' +
+        '红虚线为可用功率上限，红点为功率扫描实测数据（见「λ/4 波片扫描 + 实测标定」）。' +
+        '双对数下右轴为 π/2 时间。</p>' +
+      '</details>' +
+
+      '<details class="adv" id="' + i('expu') + '"><summary>不确定度与噪声</summary>' +
+        '<div style="margin-top:12px">' +
+          '<div class="rw"><span class="n">束腰误差 σ_w/w</span>' +
+            '<input type="range" id="' + i('r-sw') + '" min="0" max="0.2" step="0.005">' +
+            '<span class="o" id="' + i('o-sw') + '">—</span></div>' +
+          '<div class="rw"><span class="n">功率标定误差 σ_P/P</span>' +
+            '<input type="range" id="' + i('r-sp') + '" min="0" max="0.2" step="0.005">' +
+            '<span class="o" id="' + i('o-sp') + '">—</span></div>' +
+          '<div class="rw"><span class="n">矩阵元误差 σ_d/d</span>' +
+            '<input type="range" id="' + i('r-sd') + '" min="0" max="0.05" step="0.002">' +
+            '<span class="o" id="' + i('o-sd') + '">—</span></div>' +
+          '<div class="rw"><span class="n">脉冲强度噪声 σ_I/I</span>' +
+            '<input type="range" id="' + i('r-si') + '" min="0" max="0.05" step="0.002">' +
+            '<span class="o" id="' + i('o-si') + '">—</span></div>' +
+          '<p class="cap">Ω_R ∝ P/(w_x w_y)·d²，故 σ_Ω/Ω = √[(σ_P/P)² + 2(σ_w/w)² + (2σ_d/d)²]，束腰贡献最大。' +
+          'σ_I/I 只进误差预算（强度噪声项），不进不确定度带。</p>' +
+        '</div>' +
       '</details>';
     },
 
     init: function (c) {
       var $ = c.$, compact = false, V = {}, ellOn = false;
+      var axmode = 'log';
+      /* 测量不确定度（模块内状态，与独立页一致不进 Store/URL）：
+       * 独立页 3a-2b 时明确推迟，薄壳全功能页补上。 */
+      var unc = { sw: 0.05, sp: 0.05, sd: 0.01, si: 0.01 };
 
       /* 单位在每次重绘开始时解析一次并缓存（规则③：热路径不反复解析） */
       var _uP = 'mW', _uW = 'µm', _uWx = 'µm', _uWy = 'µm';
@@ -178,6 +213,12 @@
         $('v-w').value = +(U.fromSI('length', S.derived.wg(), uW())).toPrecision(7);
         $('v-wx').value = +(U.fromSI('length', s.beam.wx, uWx())).toPrecision(7);
         $('v-wy').value = +(U.fromSI('length', s.beam.wy, uWy())).toPrecision(7);
+        $('r-sw').value = unc.sw; $('r-sp').value = unc.sp;
+        $('r-sd').value = unc.sd; $('r-si').value = unc.si;
+        $('o-sw').textContent = (unc.sw * 100).toFixed(1) + '%';
+        $('o-sp').textContent = (unc.sp * 100).toFixed(1) + '%';
+        $('o-sd').textContent = (unc.sd * 100).toFixed(1) + '%';
+        $('o-si').textContent = (unc.si * 100).toFixed(1) + '%';
       }
 
       function compute() {
@@ -196,7 +237,9 @@
         V.prec = V.dN * V.t2;
         V.eSC = YB.scatterError(V.Dh);
         V.eLS = YB.areaError(V.prec);
-        V.eIN = YB.areaError((Math.PI / 2) * 0.01);
+        V.sw = unc.sw; V.sp = unc.sp; V.sd = unc.sd; V.si = unc.si;
+        V.rel = Math.sqrt(V.sp * V.sp + 2 * V.sw * V.sw + 4 * V.sd * V.sd);
+        V.eIN = YB.areaError((Math.PI / 2) * V.si);
         V.comp = $('c-comp').checked;
         V.eTOT = V.eSC + (V.comp ? 0 : V.eLS) + V.eIN;
         V.hf = YB.hfFactor(V.Dh);
@@ -213,7 +256,9 @@
       function paint() {
         var s = S.state;
         $('R-om').textContent = U.auto('freq', V.Om / (2 * Math.PI), 5);
-        $('R-omu').textContent = 'Ω_R ∝ P（非 √P）';
+        $('R-omu').textContent = V.rel > 0
+          ? '± ' + U.auto('freq', (V.Om / (2 * Math.PI)) * V.rel, 3) + '（' + (V.rel * 100).toFixed(0) + '%）'
+          : '';
         $('R-t').textContent = V.t2 ? U.auto('time', V.t2, 4) : '—';
         $('R-tu').textContent = V.t2 ? 'π 脉冲 ' + U.auto('time', 2 * V.t2, 4) : '—';
         $('R-e').textContent = isFinite(V.eTOT) ? V.eTOT.toExponential(2) : '∞';
@@ -429,7 +474,7 @@
         var o = P.prep(c.id('c3')), g = o.g, W = o.W, H = o.H, M = { l: 62, r: 18, t: 16, b: 36 };
         var s = S.state;
         var base = V.ram(s.beam.eta * s.beam.P_laser, Math.sin(V.thk)) / 1e6;
-        var data = parseXY('d-qwp'), top = base * (1 + 0.05);
+        var data = parseXY('d-qwp'), top = base * (1 + V.rel);
         data.forEach(function (p) { top = Math.max(top, p[1]); });
         top = top > 0 ? top * 1.15 : 1;
         var fx = P.scaleLin(0, 180, M.l, W - M.r), fy = P.scaleLin(0, top, H - M.b, M.t);
@@ -438,9 +483,9 @@
         var acc = P.color('--accent'), bad = P.color('--bad');
         P.clip(g, M, W, H, function () {
           var hi = [], lo = [], i, v, t0 = 0;
-          /* 不确定度控件（r-sw/r-sp/r-sd/r-si）待 3b 或后续引入，本轮用固定 ±5% 误差带 */
+          /* 误差带用真实 σ_Ω/Ω（expu 不确定度滑块），不再硬编码 ±5%（3a-2b 遗留） */
           for (i = 0; i <= 180; i++) { v = base * Math.abs(Math.sin(2 * (i - t0) * Math.PI / 180));
-            hi.push([fx(i), fy(v * 1.05)]); lo.push([fx(i), fy(v * 0.95)]); }
+            hi.push([fx(i), fy(v * (1 + V.rel))]); lo.push([fx(i), fy(v * (1 - V.rel))]); }
           g.fillStyle = acc; g.globalAlpha = 0.16; g.beginPath();
           hi.forEach(function (p, k) { k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); });
           for (i = lo.length - 1; i >= 0; i--) g.lineTo(lo[i][0], lo[i][1]);
@@ -451,6 +496,80 @@
           g.stroke();
           data.forEach(function (p) { g.fillStyle = bad; g.beginPath(); g.arc(fx(p[0]), fy(p[1]), 3.5, 0, 6.2832); g.fill(); });
         });
+      }
+
+      /* ---- 功率扫描图（Ω_R vs P，折叠区 expp，补3） ---- */
+      function drawC4(cs) {
+        if (!$('expp').open) return;
+        var o = P.prep(c.id('c4')), g = o.g, W = o.W, H = o.H, M = { l: 62, r: 56, t: 16, b: 36 };
+        var s = S.state;
+        /* 每 1 W 有效功率的 Ω_R/2π (Hz)：Ω_R = sl·P（P 为有效功率 W） */
+        var sl = Math.abs(YB.ramanOmega(V.d, s.beam.eta, s.beam.wx, s.beam.wy, V.Dh, V.geom)) / (2 * Math.PI);
+        var Pmx = Math.max(s.limits.Pmax * 1.3, s.beam.P_laser * 1.3, 1e-3);
+        var lg = (axmode === 'log');
+        var Pmn = lg ? Math.max(Pmx / 1e4, 1e-5) : 0;
+        var fx = lg ? P.scaleLog(Pmn * 1e3, Pmx * 1e3, M.l, W - M.r)
+                    : P.scaleLin(0, Pmx * 1e3, M.l, W - M.r);
+        var top = Math.max(sl * Pmx * (1 + V.rel), 1);
+        var Fmx = lg ? Math.pow(10, Math.ceil(P.L10(top))) : top * 1.05;
+        var Fmn = lg ? Fmx / 1e5 : 0;
+        var fy = lg ? P.scaleLog(Fmn, Fmx, H - M.b, M.t)
+                    : P.scaleLin(0, Fmx, H - M.b, M.t);
+        P.axes(g, M, W, H, fx, fy,
+          lg ? P.ticksLog(Pmn * 1e3, Pmx * 1e3) : P.ticksLin(0, Pmx * 1e3, 5),
+          lg ? P.ticksLog(Fmn, Fmx) : P.ticksLin(0, Fmx, 5),
+          '激光输出功率 P_laser (mW)', 'Ω_R/2π (Hz)');
+        var acc = P.color('--accent'), bad = P.color('--bad'), f2 = P.color('--fg2');
+        P.clip(g, M, W, H, function () {
+          var i, Pv, p0 = lg ? Pmn : 0;
+          /* ×0.5 / ×2 束腰灰线 */
+          [0.5, 2].forEach(function (m) {
+            var sl2 = Math.abs(YB.ramanOmega(V.d, s.beam.eta, s.beam.wx * m, s.beam.wy * m, V.Dh, V.geom)) / (2 * Math.PI);
+            g.strokeStyle = f2; g.globalAlpha = 0.4; g.lineWidth = 1; g.beginPath();
+            g.moveTo(fx(p0 * 1e3), fy(sl2 * p0)); g.lineTo(fx(Pmx * 1e3), fy(sl2 * Pmx)); g.stroke();
+            g.globalAlpha = 1;
+          });
+          /* 不确定度带 + 主曲线（Ω_R = sl·P） */
+          var hi = [], lo = [];
+          for (i = 0; i <= 90; i++) {
+            Pv = lg ? Math.pow(10, P.L10(Pmn) + i / 90 * (P.L10(Pmx) - P.L10(Pmn))) : i / 90 * Pmx;
+            hi.push([fx(Pv * 1e3), fy(sl * Pv * (1 + V.rel))]);
+            lo.push([fx(Pv * 1e3), fy(sl * Pv * (1 - V.rel))]);
+          }
+          g.fillStyle = acc; g.globalAlpha = 0.16; g.beginPath();
+          hi.forEach(function (p, k) { k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); });
+          for (i = lo.length - 1; i >= 0; i--) g.lineTo(lo[i][0], lo[i][1]);
+          g.closePath(); g.fill(); g.globalAlpha = 1;
+          g.strokeStyle = acc; g.lineWidth = 2; g.beginPath();
+          for (i = 0; i <= 90; i++) {
+            Pv = lg ? Math.pow(10, P.L10(Pmn) + i / 90 * (P.L10(Pmx) - P.L10(Pmn))) : i / 90 * Pmx;
+            i ? g.lineTo(fx(Pv * 1e3), fy(sl * Pv)) : g.moveTo(fx(Pv * 1e3), fy(sl * Pv));
+          }
+          g.stroke();
+          /* 可用功率上限 */
+          var xm = fx(s.limits.Pmax * 1e3);
+          if (xm > M.l && xm < W - M.r) {
+            g.strokeStyle = bad; g.lineWidth = 1.4; g.setLineDash([5, 4]);
+            g.beginPath(); g.moveTo(xm, M.t); g.lineTo(xm, H - M.b); g.stroke(); g.setLineDash([]);
+            g.fillStyle = bad; g.font = '10px ui-monospace,Menlo,monospace';
+            g.textAlign = 'right'; g.textBaseline = 'top'; g.fillText('功率上限', xm - 4, M.t + 4);
+          }
+          /* 实测数据点 + 工作点 */
+          var dp = parseXY('d-pow');
+          dp.forEach(function (p) { g.fillStyle = bad; g.beginPath(); g.arc(fx(p[0]), fy(p[1] * 1e6), 3.5, 0, 6.2832); g.fill(); });
+          g.fillStyle = acc; g.beginPath(); g.arc(fx(s.beam.P_laser * 1e3), fy(V.Om / (2 * Math.PI)), 4.5, 0, 6.2832); g.fill();
+          g.strokeStyle = P.color('--card'); g.lineWidth = 1.5; g.stroke();
+        });
+        if (lg) {
+          g.font = '10px ui-monospace,Menlo,monospace'; g.fillStyle = f2;
+          P.ticksLog(Fmn, Fmx).forEach(function (t) {
+            if (!t.major) return; var y = fy(t.v);
+            if (y < M.t || y > H - M.b) return;
+            var ns = 1 / (4 * t.v) * 1e9;
+            g.textAlign = 'left'; g.textBaseline = 'middle';
+            g.fillText(ns >= 1000 ? (ns / 1000).toPrecision(2) + 'µs' : ns.toPrecision(2) + 'ns', W - M.r + 6, y);
+          });
+        }
       }
 
       /* ---- 实测数据拟合（折叠区 exp4） ---- */
@@ -496,8 +615,8 @@
       }
 
       var sched = new P.Scheduler(
-        function () { compute(); paint(); drawLevel(); drawC1(true); drawC2(true); },
-        function () { P.measure([c.id('c1'), c.id('c2'), c.id('c3')]); compute(); paint(); drawLevel(); drawC1(false); drawC2(false); drawC3(); doFits(); }, 170);
+        function () { compute(); paint(); drawLevel(); drawC1(true); drawC2(true); drawC4(true); },
+        function () { P.measure([c.id('c1'), c.id('c2'), c.id('c3'), c.id('c4')]); compute(); paint(); drawLevel(); drawC1(false); drawC2(false); drawC3(); drawC4(false); doFits(); }, 170);
 
       /* ---- 事件 ---- */
       function push() {
@@ -554,12 +673,20 @@
         b.onclick = function () {
           c.set({ 'raman.detuning_Hz': parseFloat(b.dataset.d) }); fill(); sched.flush(); };
       });
-      ['exp1', 'exp2', 'exp3', 'exp4'].forEach(function (k) {
-        $(k).addEventListener('toggle', function () { P.measure([c.id('c1'), c.id('c2'), c.id('c3')]); sched.flush(); }); });
+      ['exp1', 'exp2', 'exp3', 'exp4', 'expp', 'expu'].forEach(function (k) {
+        $(k).addEventListener('toggle', function () { P.measure([c.id('c1'), c.id('c2'), c.id('c3'), c.id('c4')]); sched.flush(); }); });
       ['d-qwp', 'd-pow'].forEach(function (k) {
         $(k).addEventListener('input', function () { sched.flush(); }); });
+      $('ax-log').onclick = function () { axmode = 'log'; $('ax-log').dataset.on = '1'; $('ax-lin').dataset.on = '0'; sched.flush(); };
+      $('ax-lin').onclick = function () { axmode = 'lin'; $('ax-lin').dataset.on = '1'; $('ax-log').dataset.on = '0'; sched.flush(); };
+      ['r-sw', 'r-sp', 'r-sd', 'r-si'].forEach(function (k) {
+        $(k).addEventListener('input', function () {
+          unc[k.slice(2)] = parseFloat($(k).value);
+          $('o-' + k.slice(2)).textContent = (unc[k.slice(2)] * 100).toFixed(1) + '%';
+          sched.flush();
+        }); });
 
-      syncUnits(); fill(); P.measure([c.id('c1'), c.id('c2'), c.id('c3')]); sched.flush();
+      syncUnits(); fill(); P.measure([c.id('c1'), c.id('c2'), c.id('c3'), c.id('c4')]); sched.flush();
 
       return {
         update: function () { fill(); sched.flush(); },
@@ -567,7 +694,8 @@
           if (on === compact) return;
           compact = on;
           if (on) { $('exp1').open = false; $('exp2').open = false;
-            $('exp3').open = false; $('exp4').open = false; }
+            $('exp3').open = false; $('exp4').open = false;
+            $('expp').open = false; $('expu').open = false; }
           $('lvl').style.display = on ? 'none' : 'block';
           sched.flush();
         },
