@@ -3,7 +3,23 @@
 格式：`物理 / 界面 / 性能 / 对账 / 待定`，每条写清**改了什么**与**为什么改**。
 半年后回头看，"为什么"通常比"什么"更有价值。
 
-## [0.3.3] — 2026-08-06 — raman 独立页改薄壳（3b-3）+ v-d 坏理论值修复
+## [0.3.4] — 2026-08-06 — hfs 独立页改薄壳（3b-3 收尾）
+
+### 界面
+- **`tools/hfs-matrix-element.html` 从 770 行完整页改为 87 行薄壳**（照 rabi/raman 模式：nav + host + `YBM.mount('hfs-matrix-element', host, {compact:false})` + Store URL 恢复/写入）。3b-2 裁决项（CSV/JSON 导出、循环徽标、说明 exp2 三段/exp5 更新记录、42 组合扫描）当时已进模块，薄壳直接继承。
+- **URL 状态补上**：独立页原本无 URL 状态（连 urlstate 都没用），薄壳用主页面同套编码（el/Ek/G），分享链接与主页面兼容。
+
+### 物理/模块
+- **补超精细约化矩阵元表 ⟨F′‖d‖F⟩**（exp1 顶部，独立页 tA 补进）：6j 分解的纯角动量系数、a.u.（× d_red）、相对线强。它是 R1 求和规则的数据可视化，也是 hfs 计算器的核心中间输出。用户裁决：补（不在 3b-2 舍清单）。
+- **loadDB 按页面位置选路径**：挂载在 `tools/*.html` 时直接用 `../data/transitions.json`，避免先 404 再回退产生的无谓 console error。
+
+### 测试
+- browser.js 新增 3h：hfs 薄壳页展开 exp1，断言 Yb ¹S₀→³P₁ 两行、相对线强和 = 2（R1 成立）。browser 60→61。
+
+### 待定
+- **3b 系列全部完成**（rabi 3b-1 / raman 3b-3 / hfs 3b-3）。README 待办 #2/#3/#5 已勾账。下一步回长期待办：`data/calibrations.json` 待填实测值、Γ 183/182 定值。
+
+
 
 ### 界面
 - **`tools/raman-qubit.html` 从 872 行全功能页改为 87 行薄壳**（照 3b-1 对 rabi 的做法：nav + host + `YBM.mount('raman-qubit', host, {compact:false})` + Store URL 恢复/写入）。URL 兼容两套旧键（独立页 `s3` 小写与主页面 `S3` 大写都认）；旧独立页的 `f=`/`d=`（求解目标/派生量）按规则④ 不恢复。

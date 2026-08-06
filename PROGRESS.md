@@ -14,3 +14,4 @@
 - 2026-08-06 | CHANGELOG：三次『测试绿灯但没测到东西』合并成一条模式记录 + push dev（19 个 commit，CI vectors job success、browser skipped 设计如此） | push 成功 5bfbc25..3aabb65；CI vectors 四套全过 | 3b-3 hfs 薄壳，等确认
 - 2026-08-06 | 3b-3 hfs 第 1 步：tools/hfs-matrix-element.html 改薄壳 + 模块补超精细约化矩阵元表 ⟨F′‖d‖F⟩（exp1，6j 分解/相对线强）+ loadDB 按页面位置选路径避免无谓 404 | verify.sh 全绿（browser 60 项 0 失败）；超精细表 Yb-171 两行（F′=1/2 −0.441446、F′=3/2 0.624299，相对线强和=2=R1 成立）；薄壳无 console error | 3b-3 hfs 第 2 步：browser 断言 + 收尾文档
 - 2026-08-06 | 3b-3 hfs 第 2 步：browser.js 新增 3h 段（hfs 薄壳超精细约化矩阵元表 R1 断言） | verify.sh 全绿（browser 61 项 0 失败，含「超精细表 Yb ³P₁ 两行、相对线强和=2.0000（R1 成立）」永久回归断言） | 3b-3 hfs 第 3 步：README/HANDOFF/CHANGELOG 收尾（3b-3 全部完成）
+- 2026-08-06 | 3b-3 hfs 第 3 步（收尾）：README/HANDOFF/CHANGELOG 标记 3b-3 全部完成（三个独立页全部薄壳；browser 61 项；待办 #2/#3/#5 勾账；3b 系列完成，下一步回长期待办） | 纯文档改动；功能在第 1/2 步 verify 全绿 | 3b 系列完成，等确认下一步（长期待办标定/Γ 定值 或新系列）

@@ -29,9 +29,9 @@ node tests/bench.js && python3 tests/bench.py    # 跑测试
 | 适合 | 跨模块工作流、演示、快速估算 | 深入某一个计算 |
 
 **物理不会分叉**：两者都从 `shared/constants.js` 与 `shared/physics.js` 取值，
-公式与常数只有一份。`rabi-power.html`、`raman-qubit.html` 已是只挂载单模块的薄壳
-（`tools/*.html` 只剩导航与 URL 恢复/写入），`hfs-matrix-element.html` 仍保留完整
-独立页 —— 模块与独立页收敛（3b-3）只剩 hfs 未做。
+公式与常数只有一份。`tools/*.html` 三个独立页（rabi-power / raman-qubit /
+hfs-matrix-element）都已是只挂载单模块的薄壳，只剩导航与 URL 恢复/写入——
+模块与独立页的界面代码已收敛（3b-3 完成）。
 
 ## 目录
 
@@ -189,10 +189,10 @@ YBM.register({
 1. **`data/calibrations.json` 全为 null，待填入实测值。**
    偏振与几何标定（波片零点 θ₀、光束–磁场夹角 Θ_kB）完成前，
    拉曼模块的绝对幅度不应作定量预测。
-2. **模块与独立页面收敛（3b-3）。** `rabi-power.html`、`raman-qubit.html`
-   已改为只挂载单模块的薄壳（raman 含全部功能：光束几何、不确定度滑块、
-   功率扫描图、λ/4 波片角度输入、CSV 导出、notebook 对账），只剩
-   `tools/hfs-matrix-element.html` 未收敛。
+2. ~~**模块与独立页面收敛（3b-3）。**~~ 已完成：`tools/*.html` 三个独立页都改为
+   只挂载单模块的薄壳（raman 含全部功能：光束几何、不确定度滑块、功率扫描图、
+   λ/4 波片角度输入、CSV 导出、notebook 对账；hfs 含超精细约化矩阵元表、
+   求和扫描、导出、循环徽标），界面代码重复已消除。
 3. ~~`tools/raman-qubit.html`（独立页面）的画布代码尚未迁到 `shared/plot.js`，~~
    ~~仍有 v7 之前的布局抖动问题。~~ 已随 3b-3 薄壳消除（模块用 `shared/plot.js`，
    独立页改为薄壳不再有自己的画布）。
