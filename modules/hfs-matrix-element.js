@@ -14,14 +14,22 @@
   var W = window.YBW, S = window.YBStore, U = window.YBU, C = window.YBC;
   var DB = null, loadErr = null;
 
-  /* 数据库延迟加载：fetch 在 file:// 下会被 CORS 挡掉，需要明确提示 */
+  /* 数据库延迟加载：fetch 在 file:// 下会被 CORS 挡掉，需要明确提示。
+   * 模块挂载在 index.html（根）或 tools/*.html（子目录）都能用，按页面位置
+   * 选对相对路径，避免先 404 再回退产生的无谓 console error。 */
+  function dbPath() {
+    return /\/tools\//.test(window.location.pathname)
+      ? '../data/transitions.json' : 'data/transitions.json';
+  }
   function loadDB() {
     if (DB) return Promise.resolve(DB);
-    return fetch('data/transitions.json')
+    var p1 = dbPath(), p2 = p1 === 'data/transitions.json'
+      ? '../data/transitions.json' : 'data/transitions.json';
+    return fetch(p1)
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (j) { DB = j.elements; return DB; })
       .catch(function (e) {
-        return fetch('../data/transitions.json').then(function (r) { return r.json(); })
+        return fetch(p2).then(function (r) { return r.json(); })
           .then(function (j) { DB = j.elements; return DB; })
           .catch(function () { loadErr = e; throw e; });
       });
@@ -73,10 +81,13 @@
         '<p class="cap" id="' + i('cyc-note') + '"></p>' +
       '</div>' +
 
-      '<details class="adv" id="' + i('exp1') + '"><summary>求和规则逐项检验</summary>' +
-        '<div id="' + i('sr') + '" style="margin-top:10px"></div>' +
-        '<p class="cap">对 J=0 基态，每个激发态子能级的 CG 平方和恰为 1 —— ' +
-        '这正是 6j 因子被 d_cyc 定义吸收的依据。若此处不为 1，说明归一化约定有误。</p>' +
+      '<details class="adv" id="' + i('exp1') + '"><summary>超精细约化矩阵元与求和规则检验</summary>' +
+        '<div style="margin-top:10px"><b style="font-size:13px">⟨F′‖d‖F⟩</b>' +
+          '<div id="' + i('hyf') + '" style="margin-top:6px"></div></div>' +
+        '<div id="' + i('sr') + '" style="margin-top:12px"></div>' +
+        '<p class="cap">⟨F′‖d‖F⟩ 由 ⟨J′‖d‖J⟩ 经一个 6j 符号分解得到（电偶极算符只作用于电子，核自旋是旁观者）：' +
+        'a.u. = 系数 × ⟨J′‖d‖J⟩，相对线强 = 系数²。下方求和规则：对 J=0 基态，每个激发态子能级的 ' +
+        'CG 平方和恰为 1 —— 这正是 6j 因子被 d_cyc 定义吸收的依据。若此处不为 1，说明归一化约定有误。</p>' +
       '</details>' +
 
       '<details class="adv" id="' + i('exp2') + '"><summary>数据出处与约定</summary>' +
@@ -292,6 +303,22 @@
             '</td><td class="n">' + (val - 1).toExponential(2) + '</td></tr>';
         });
         $('sr').innerHTML = s2 + '</table>';
+
+        /* 超精细约化矩阵元 ⟨F′‖d‖F⟩（6j 分解；独立页 tA 补进模块） */
+        var dRM = D.d_red_au(), Fsg = W.frange(t.Jg, I), Fsp = W.frange(t.Jp, I), A = [];
+        Fsg.forEach(function (F) { Fsp.forEach(function (Fp) {
+          var cc = W.redHFS(I, t.Jg, t.Jp, F, Fp);
+          if (Math.abs(cc) > 1e-11) A.push({ F: F, Fp: Fp, c: cc });
+        }); });
+        var h2 = '<table><tr><th>F</th><th>F′</th>' +
+          '<th style="text-align:right">系数</th><th style="text-align:right">a.u.</th>' +
+          '<th style="text-align:right">相对线强</th></tr>';
+        A.forEach(function (r) {
+          h2 += '<tr><td class="n">' + fmtHalf(r.F) + '</td><td class="n">' + fmtHalf(r.Fp) + '</td>' +
+            '<td class="n">' + W.pretty(r.c) + '</td><td class="n">' + (r.c * dRM).toFixed(6) + '</td>' +
+            '<td class="n">' + (r.c * r.c).toFixed(4) + '</td></tr>';
+        });
+        $('hyf').innerHTML = h2 + '</table>';
 
         /* 出处 */
         $('meta').innerHTML = '<table>' +
